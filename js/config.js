@@ -8,7 +8,7 @@
 // policies from schema.sql in place.
 // ============================================================
 
-const SUPABASE_URL =https://ykqxxicmanvxtrmtlgcc.supabase.co/rest/v1/
-const SUPABASE_ANON_KEY =sb_publishable_x_50j8gDLKBGJODKvC9S2g_YJZ-cpGx
+const SUPABASE_URL ="https://ykqxxicmanvxtrmtlgcc.supabase.co";
+const SUPABASE_ANON_KEY ="sb_publishable_x_50j8gDLKBGJODKvC9S2g_YJZ-cpGx";
 // Number of drinks needed before the next one is free.
 const DRINKS_FOR_FREE = 7;
