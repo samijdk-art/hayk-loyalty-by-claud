@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ورود مشتری — HAYK Loyalty Club</title>
+<link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+
+  <main class="page">
+    <a href="index.html" class="link-back">→ بازگشت</a>
+    <div class="card">
+      <div class="brand-top">
+        <div class="gold-rule"></div>
+        <div class="brand-eyebrow">HAYK</div>
+      </div>
+      <h1 class="page-title" style="font-size:32px;">ورود مشتری</h1>
+      <p class="page-sub">شماره موبایلی که باهاش عضو شدید رو وارد کنید تا امتیازهاتون رو ببینید.</p>
+
+      <div id="msg" class="form-msg"></div>
+
+      <form id="login-form">
+        <div class="field">
+          <label>شماره موبایل</label>
+          <input type="tel" id="f-phone" placeholder="09xxxxxxxxx" required autofocus />
+        </div>
+        <button type="submit" class="btn btn-primary" id="submit-btn">ورود به حساب من</button>
+      </form>
+
+      <p class="center small muted mt-24">
+        هنوز عضو نشدید؟ <a href="join.html" style="color:var(--gold); font-weight:700;">همین الان عضو شوید</a>
+      </p>
+    </div>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/config.js"></script>
+  <script src="js/app.js"></script>
+  <script>
+    const form = document.getElementById("login-form");
+    const msg = document.getElementById("msg");
+    const submitBtn = document.getElementById("submit-btn");
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      hideFormMsg(msg);
+      const phone = normalizePhone(document.getElementById("f-phone").value);
+      if (!phone) return;
+
+      setBtnLoading(submitBtn, true, "در حال جستجو…");
+      try {
+        const customer = await fetchCustomerByPhone(phone);
+        if (!customer) {
+          showFormMsg(msg, "شماره‌ای با این مشخصات پیدا نشد. اول عضو بشید.");
+          setBtnLoading(submitBtn, false);
+          return;
+        }
+        window.location.href = `dashboard.html?id=${customer.id}`;
+      } catch (err) {
+        console.error(err);
+        showFormMsg(msg, "مشکلی پیش اومد، دوباره تلاش کنید.");
+        setBtnLoading(submitBtn, false);
+      }
+    });
+  </script>
+</body>
+</html>

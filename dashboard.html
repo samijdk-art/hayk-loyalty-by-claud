@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>کارت وفاداری من — HAYK</title>
+<link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+
+  <main class="page">
+    <a href="index.html" class="link-back">→ صفحه اصلی</a>
+
+    <div class="card" id="loading-card">
+      <p class="center muted"><span class="loading-dot"></span>در حال بارگذاری کارت شما…</p>
+    </div>
+
+    <div class="card hidden" id="content-card">
+      <div class="brand-top">
+        <div class="gold-rule"></div>
+        <div class="brand-eyebrow">HAYK</div>
+      </div>
+
+      <div class="avatar-badge" id="avatar"></div>
+      <h1 class="page-title" style="font-size:26px;" id="cust-name"></h1>
+      <p class="center muted small" id="cust-phone"></p>
+
+      <div class="progress-outer mt-24">
+        <div class="progress-inner" id="progress-bar" style="width:0%;"></div>
+      </div>
+      <div class="progress-caption">
+        <span id="progress-text"></span>
+        <span id="progress-frac"></span>
+      </div>
+
+      <div class="cup-row" id="cup-row"></div>
+
+      <div class="stat-grid">
+        <div class="stat-box">
+          <div class="num" id="stat-total">0</div>
+          <div class="cap">کل نوشیدنی‌ها</div>
+        </div>
+        <div class="stat-box">
+          <div class="num" id="stat-free">0</div>
+          <div class="cap">نوشیدنی رایگان دریافتی</div>
+        </div>
+      </div>
+
+      <div class="section-title">کد وفاداری شما</div>
+      <div class="qr-wrap" id="qrcode"></div>
+      <p class="center small muted">این کد رو موقع سفارش به باریستا نشون بدید</p>
+
+      <!-- Staff-only add drink box -->
+      <div class="staff-box" id="staff-box">
+        <div class="title">🔒 دسترسی کارکنان</div>
+        <div id="staff-locked">
+          <div class="field" style="margin-bottom:10px;">
+            <input type="password" id="staff-pass" placeholder="رمز عبور کارکنان" />
+          </div>
+          <button class="btn btn-outline btn-sm btn-block" id="staff-unlock-btn">باز کردن دسترسی</button>
+          <p class="form-msg" id="staff-msg"></p>
+        </div>
+        <div id="staff-unlocked" class="hidden">
+          <p class="small muted" style="margin-bottom:12px;">دسترسی فعال شد — می‌تونید نوشیدنی اضافه یا اصلاح کنید.</p>
+          <div class="btn-row">
+            <button class="btn btn-dark btn-sm" id="minus-btn" style="flex:1;">− ۱ نوشیدنی</button>
+            <button class="btn btn-primary btn-sm" id="plus-btn" style="flex:2;">+ ۱ نوشیدنی</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card hidden" id="notfound-card">
+      <p class="center muted">این کارت پیدا نشد یا حذف شده.</p>
+      <a href="index.html" class="btn btn-outline mt-16">بازگشت به صفحه اصلی</a>
+    </div>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/davidshimjs-qrcodejs@0.0.2/qrcode.min.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/app.js"></script>
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const custId = params.get("id");
+    let customer = null;
+    let staffPasswordCache = null;
+
+    async function load() {
+      if (!custId) return showNotFound();
+      try {
+        customer = await fetchCustomerById(custId);
+        if (!customer) return showNotFound();
+        render();
+      } catch (err) {
+        console.error(err);
+        showNotFound();
+      }
+    }
+
+    function showNotFound() {
+      document.getElementById("loading-card").classList.add("hidden");
+      document.getElementById("notfound-card").classList.remove("hidden");
+    }
+
+    function render() {
+      document.getElementById("loading-card").classList.add("hidden");
+      document.getElementById("content-card").classList.remove("hidden");
+
+      document.getElementById("avatar").textContent = initials(customer.name);
+      document.getElementById("cust-name").textContent = customer.name;
+      document.getElementById("cust-phone").textContent = customer.phone;
+
+      const pct = Math.min(100, Math.round((customer.drink_count / DRINKS_FOR_FREE) * 100));
+      document.getElementById("progress-bar").style.width = pct + "%";
+      document.getElementById("progress-frac").textContent = `${customer.drink_count} / ${DRINKS_FOR_FREE}`;
+
+      const remaining = Math.max(0, DRINKS_FOR_FREE - customer.drink_count);
+      document.getElementById("progress-text").textContent =
+        remaining === 0 ? "🎉 نوشیدنی بعدی رایگانه!" : `${remaining} نوشیدنی تا رایگان`;
+
+      const cupRow = document.getElementById("cup-row");
+      cupRow.innerHTML = "";
+      for (let i = 0; i < DRINKS_FOR_FREE; i++) {
+        const cup = document.createElement("div");
+        cup.className = "cup" + (i < customer.drink_count ? " filled" : "");
+        cup.textContent = "☕";
+        cupRow.appendChild(cup);
+      }
+      const freeCup = document.createElement("div");
+      freeCup.className = "cup free";
+      freeCup.textContent = "🎁";
+      cupRow.appendChild(freeCup);
+
+      document.getElementById("stat-total").textContent = customer.total_drinks || 0;
+      document.getElementById("stat-free").textContent = customer.free_drinks_redeemed || 0;
+
+      document.getElementById("qrcode").innerHTML = "";
+      new QRCode(document.getElementById("qrcode"), {
+        text: dashboardUrlForId(customer.id),
+        width: 176,
+        height: 176,
+        colorDark: "#18110b",
+        colorLight: "#ffffff",
+        correctLevel: QRCode.CorrectLevel.M,
+      });
+    }
+
+    // ---- staff unlock ----
+    document.getElementById("staff-unlock-btn").addEventListener("click", async () => {
+      const input = document.getElementById("staff-pass").value.trim();
+      const msg = document.getElementById("staff-msg");
+      hideFormMsg(msg);
+      if (!input) return;
+      try {
+        const real = await getSetting("staff_password");
+        if (input === real) {
+          staffPasswordCache = input;
+          document.getElementById("staff-locked").classList.add("hidden");
+          document.getElementById("staff-unlocked").classList.remove("hidden");
+        } else {
+          showFormMsg(msg, "رمز اشتباهه.");
+        }
+      } catch (err) {
+        console.error(err);
+        showFormMsg(msg, "خطا در بررسی رمز.");
+      }
+    });
+
+    async function adjustDrink(delta) {
+      if (!customer) return;
+      let { drink_count, total_drinks, free_drinks_redeemed } = customer;
+
+      if (delta > 0) {
+        if (drink_count >= DRINKS_FOR_FREE) {
+          free_drinks_redeemed = (free_drinks_redeemed || 0) + 1;
+          drink_count = 0;
+        } else {
+          drink_count += 1;
+        }
+        total_drinks = (total_drinks || 0) + 1;
+      } else {
+        if (drink_count > 0) {
+          drink_count -= 1;
+          total_drinks = Math.max(0, (total_drinks || 0) - 1);
+        } else if (free_drinks_redeemed > 0) {
+          // undo a redeemed free drink
+          free_drinks_redeemed -= 1;
+          drink_count = DRINKS_FOR_FREE;
+          total_drinks = Math.max(0, (total_drinks || 0) - 1);
+        }
+      }
+
+      try {
+        const { data, error } = await supabaseClient
+          .from("customers")
+          .update({ drink_count, total_drinks, free_drinks_redeemed })
+          .eq("id", customer.id)
+          .select()
+          .single();
+        if (error) throw error;
+        customer = data;
+        render();
+        showToast(delta > 0 ? "یک نوشیدنی اضافه شد ☕" : "اصلاح شد");
+      } catch (err) {
+        console.error(err);
+        showToast("مشکلی پیش اومد", true);
+      }
+    }
+
+    document.getElementById("plus-btn").addEventListener("click", () => adjustDrink(1));
+    document.getElementById("minus-btn").addEventListener("click", () => adjustDrink(-1));
+
+    load();
+  </script>
+</body>
+</html>

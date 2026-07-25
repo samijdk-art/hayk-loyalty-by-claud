@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>پنل مدیریت — HAYK Loyalty Club</title>
+<link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+
+  <main class="page page-wide">
+    <div class="card">
+      <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:14px; margin-bottom:8px;">
+        <div class="brand-top" style="align-items:flex-start; margin-bottom:0;">
+          <div class="brand-eyebrow">HAYK — پنل مدیریت</div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-outline btn-sm" id="settings-btn">⚙️ تنظیمات</button>
+          <button class="btn btn-dark btn-sm" id="logout-btn">خروج</button>
+        </div>
+      </div>
+
+      <div class="toolbar mt-24">
+        <input type="text" class="search-input" id="search" placeholder="جستجو بر اساس نام یا شماره موبایل…" />
+        <button class="btn btn-primary btn-sm" id="refresh-btn">↻ بروزرسانی</button>
+      </div>
+
+      <div id="stats-row" class="stat-grid" style="grid-template-columns: repeat(3,1fr);"></div>
+
+      <div class="table-wrap mt-16">
+        <table>
+          <thead>
+            <tr>
+              <th>نام</th>
+              <th>موبایل</th>
+              <th>پیشرفت</th>
+              <th>کل نوشیدنی</th>
+              <th>رایگان دریافتی</th>
+              <th>تاریخ عضویت</th>
+              <th>عملیات</th>
+            </tr>
+          </thead>
+          <tbody id="table-body"></tbody>
+        </table>
+      </div>
+      <p class="center muted small mt-16" id="empty-msg" style="display:none;">هیچ مشتری‌ای پیدا نشد.</p>
+    </div>
+  </main>
+
+  <!-- Edit customer modal -->
+  <div class="modal-overlay" id="edit-modal">
+    <div class="modal-box">
+      <div class="modal-title">ویرایش مشتری</div>
+      <div id="edit-msg" class="form-msg"></div>
+      <div class="field"><label>نام</label><input type="text" id="e-name" /></div>
+      <div class="field"><label>موبایل</label><input type="text" id="e-phone" /></div>
+      <div class="field"><label>تعداد نوشیدنی فعلی (از ۷)</label><input type="number" id="e-drinks" min="0" /></div>
+      <div class="field"><label>کل نوشیدنی مصرف‌شده</label><input type="number" id="e-total" min="0" /></div>
+      <div class="field"><label>تعداد نوشیدنی رایگان دریافتی</label><input type="number" id="e-free" min="0" /></div>
+      <div class="btn-row mt-16">
+        <button class="btn btn-dark" id="edit-cancel">انصراف</button>
+        <button class="btn btn-primary" id="edit-save">ذخیره</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Settings modal -->
+  <div class="modal-overlay" id="settings-modal">
+    <div class="modal-box">
+      <div class="modal-title">تنظیمات دسترسی</div>
+      <div id="settings-msg" class="form-msg"></div>
+      <div class="field"><label>رمز عبور کارکنان (Staff)</label><input type="text" id="s-staff-pass" /></div>
+      <div class="divider-line"></div>
+      <div class="field"><label>نام کاربری ادمین</label><input type="text" id="s-admin-user" /></div>
+      <div class="field"><label>رمز عبور ادمین</label><input type="text" id="s-admin-pass" /></div>
+      <div class="btn-row mt-16">
+        <button class="btn btn-dark" id="settings-cancel">انصراف</button>
+        <button class="btn btn-primary" id="settings-save">ذخیره تنظیمات</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/config.js"></script>
+  <script src="js/app.js"></script>
+  <script>
+    if (sessionStorage.getItem("hayk_admin_auth") !== "1") {
+      window.location.href = "staff-admin.html";
+    }
+
+    document.getElementById("logout-btn").addEventListener("click", () => {
+      sessionStorage.removeItem("hayk_admin_auth");
+      window.location.href = "index.html";
+    });
+
+    let allCustomers = [];
+
+    async function loadCustomers() {
+      const { data, error } = await supabaseClient
+        .from("customers")
+        .select("*")
+        .order("created_at", { ascending: false });
+      if (error) {
+        showToast("خطا در بارگذاری لیست", true);
+        console.error(error);
+        return;
+      }
+      allCustomers = data || [];
+      renderStats();
+      renderTable(allCustomers);
+    }
+
+    function renderStats() {
+      const total = allCustomers.length;
+      const totalDrinks = allCustomers.reduce((s, c) => s + (c.total_drinks || 0), 0);
+      const totalFree = allCustomers.reduce((s, c) => s + (c.free_drinks_redeemed || 0), 0);
+      document.getElementById("stats-row").innerHTML = `
+        <div class="stat-box"><div class="num">${total}</div><div class="cap">کل مشتری‌ها</div></div>
+        <div class="stat-box"><div class="num">${totalDrinks}</div><div class="cap">کل نوشیدنی‌های فروخته‌شده</div></div>
+        <div class="stat-box"><div class="num">${totalFree}</div><div class="cap">کل نوشیدنی‌های رایگان اهدایی</div></div>
+      `;
+    }
+
+    function renderTable(list) {
+      const tbody = document.getElementById("table-body");
+      tbody.innerHTML = "";
+      document.getElementById("empty-msg").style.display = list.length ? "none" : "block";
+
+      for (const c of list) {
+        const tr = document.createElement("tr");
+        const ready = c.drink_count >= DRINKS_FOR_FREE;
+        tr.innerHTML = `
+          <td data-label="نام">${escapeHtml(c.name)}</td>
+          <td data-label="موبایل">${escapeHtml(c.phone)}</td>
+          <td data-label="پیشرفت"><span class="badge ${ready ? "ready" : ""}">${c.drink_count} / ${DRINKS_FOR_FREE}${ready ? " 🎁" : ""}</span></td>
+          <td data-label="کل نوشیدنی">${c.total_drinks || 0}</td>
+          <td data-label="رایگان دریافتی">${c.free_drinks_redeemed || 0}</td>
+          <td data-label="عضویت">${fmtDate(c.created_at)}</td>
+          <td data-label="عملیات">
+            <button class="icon-btn" title="کم کردن نوشیدنی" data-act="minus" data-id="${c.id}">−</button>
+            <button class="icon-btn" title="اضافه کردن نوشیدنی" data-act="plus" data-id="${c.id}">+</button>
+            <button class="icon-btn" title="ویرایش" data-act="edit" data-id="${c.id}">✎</button>
+            <button class="icon-btn danger" title="حذف" data-act="delete" data-id="${c.id}">🗑</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      }
+    }
+
+    function escapeHtml(str) {
+      const d = document.createElement("div");
+      d.textContent = str ?? "";
+      return d.innerHTML;
+    }
+
+    document.getElementById("table-body").addEventListener("click", async (e) => {
+      const btn = e.target.closest("button[data-act]");
+      if (!btn) return;
+      const id = btn.dataset.id;
+      const act = btn.dataset.act;
+      const customer = allCustomers.find((c) => c.id === id);
+      if (!customer) return;
+
+      if (act === "plus" || act === "minus") {
+        await quickAdjust(customer, act === "plus" ? 1 : -1);
+      } else if (act === "edit") {
+        openEdit(customer);
+      } else if (act === "delete") {
+        if (confirm(`مشتری «${customer.name}» حذف بشه؟ این عمل قابل بازگشت نیست.`)) {
+          const { error } = await supabaseClient.from("customers").delete().eq("id", id);
+          if (error) { showToast("خطا در حذف", true); return; }
+          showToast("مشتری حذف شد");
+          loadCustomers();
+        }
+      }
+    });
+
+    async function quickAdjust(customer, delta) {
+      let { drink_count, total_drinks, free_drinks_redeemed } = customer;
+      if (delta > 0) {
+        if (drink_count >= DRINKS_FOR_FREE) {
+          free_drinks_redeemed = (free_drinks_redeemed || 0) + 1;
+          drink_count = 0;
+        } else {
+          drink_count += 1;
+        }
+        total_drinks = (total_drinks || 0) + 1;
+      } else {
+        if (drink_count > 0) {
+          drink_count -= 1;
+          total_drinks = Math.max(0, (total_drinks || 0) - 1);
+        } else if (free_drinks_redeemed > 0) {
+          free_drinks_redeemed -= 1;
+          drink_count = DRINKS_FOR_FREE;
+          total_drinks = Math.max(0, (total_drinks || 0) - 1);
+        }
+      }
+      const { error } = await supabaseClient
+        .from("customers")
+        .update({ drink_count, total_drinks, free_drinks_redeemed })
+        .eq("id", customer.id);
+      if (error) { showToast("خطا در بروزرسانی", true); return; }
+      loadCustomers();
+    }
+
+    // ---- edit modal ----
+    const editModal = document.getElementById("edit-modal");
+    let editingId = null;
+
+    function openEdit(c) {
+      editingId = c.id;
+      document.getElementById("e-name").value = c.name;
+      document.getElementById("e-phone").value = c.phone;
+      document.getElementById("e-drinks").value = c.drink_count;
+      document.getElementById("e-total").value = c.total_drinks || 0;
+      document.getElementById("e-free").value = c.free_drinks_redeemed || 0;
+      hideFormMsg(document.getElementById("edit-msg"));
+      editModal.classList.add("show");
+    }
+    document.getElementById("edit-cancel").addEventListener("click", () => editModal.classList.remove("show"));
+    document.getElementById("edit-save").addEventListener("click", async () => {
+      const msg = document.getElementById("edit-msg");
+      const name = document.getElementById("e-name").value.trim();
+      const phone = normalizePhone(document.getElementById("e-phone").value);
+      const drink_count = parseInt(document.getElementById("e-drinks").value, 10) || 0;
+      const total_drinks = parseInt(document.getElementById("e-total").value, 10) || 0;
+      const free_drinks_redeemed = parseInt(document.getElementById("e-free").value, 10) || 0;
+
+      if (!name || !phone) { showFormMsg(msg, "نام و موبایل نمی‌تونن خالی باشن."); return; }
+
+      const { error } = await supabaseClient
+        .from("customers")
+        .update({ name, phone, drink_count, total_drinks, free_drinks_redeemed })
+        .eq("id", editingId);
+      if (error) {
+        showFormMsg(msg, error.message.includes("duplicate") ? "این شماره موبایل قبلاً ثبت شده." : "خطا در ذخیره‌سازی.");
+        return;
+      }
+      editModal.classList.remove("show");
+      showToast("تغییرات ذخیره شد");
+      loadCustomers();
+    });
+
+    // ---- settings modal ----
+    const settingsModal = document.getElementById("settings-modal");
+    document.getElementById("settings-btn").addEventListener("click", async () => {
+      hideFormMsg(document.getElementById("settings-msg"));
+      const [staffPass, adminUser, adminPass] = await Promise.all([
+        getSetting("staff_password"),
+        getSetting("admin_username"),
+        getSetting("admin_password"),
+      ]);
+      document.getElementById("s-staff-pass").value = staffPass || "";
+      document.getElementById("s-admin-user").value = adminUser || "";
+      document.getElementById("s-admin-pass").value = adminPass || "";
+      settingsModal.classList.add("show");
+    });
+    document.getElementById("settings-cancel").addEventListener("click", () => settingsModal.classList.remove("show"));
+    document.getElementById("settings-save").addEventListener("click", async () => {
+      const msg = document.getElementById("settings-msg");
+      const staffPass = document.getElementById("s-staff-pass").value.trim();
+      const adminUser = document.getElementById("s-admin-user").value.trim();
+      const adminPass = document.getElementById("s-admin-pass").value.trim();
+      if (!staffPass || !adminUser || !adminPass) {
+        showFormMsg(msg, "همه فیلدها الزامی هستن.");
+        return;
+      }
+      try {
+        await Promise.all([
+          setSetting("staff_password", staffPass),
+          setSetting("admin_username", adminUser),
+          setSetting("admin_password", adminPass),
+        ]);
+        settingsModal.classList.remove("show");
+        showToast("تنظیمات ذخیره شد");
+      } catch (err) {
+        console.error(err);
+        showFormMsg(msg, "خطا در ذخیره‌سازی تنظیمات.");
+      }
+    });
+
+    // ---- search ----
+    document.getElementById("search").addEventListener("input", (e) => {
+      const q = e.target.value.trim().toLowerCase();
+      if (!q) { renderTable(allCustomers); return; }
+      renderTable(
+        allCustomers.filter(
+          (c) => c.name.toLowerCase().includes(q) || c.phone.includes(q)
+        )
+      );
+    });
+
+    document.getElementById("refresh-btn").addEventListener("click", loadCustomers);
+
+    loadCustomers();
+  </script>
+</body>
+</html>

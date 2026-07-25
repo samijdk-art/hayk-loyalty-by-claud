@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ورود کارکنان — HAYK Loyalty Club</title>
+<link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+
+  <main class="page">
+    <a href="index.html" class="link-back">→ بازگشت</a>
+    <div class="card">
+      <div class="brand-top">
+        <div class="gold-rule"></div>
+        <div class="brand-eyebrow">HAYK</div>
+      </div>
+      <h1 class="page-title" style="font-size:30px;">🧑‍💼 ورود کارکنان</h1>
+      <p class="page-sub">برای دسترسی به لیست کامل مشتری‌ها، نام کاربری و رمز عبور ادمین رو وارد کنید.</p>
+
+      <div id="msg" class="form-msg"></div>
+
+      <form id="login-form">
+        <div class="field">
+          <label>نام کاربری</label>
+          <input type="text" id="f-user" placeholder="admin" required autofocus />
+        </div>
+        <div class="field">
+          <label>رمز عبور</label>
+          <input type="password" id="f-pass" placeholder="••••••••" required />
+        </div>
+        <button type="submit" class="btn btn-primary" id="submit-btn">ورود</button>
+      </form>
+    </div>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/config.js"></script>
+  <script src="js/app.js"></script>
+  <script>
+    const form = document.getElementById("login-form");
+    const msg = document.getElementById("msg");
+    const submitBtn = document.getElementById("submit-btn");
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      hideFormMsg(msg);
+      const user = document.getElementById("f-user").value.trim();
+      const pass = document.getElementById("f-pass").value;
+
+      setBtnLoading(submitBtn, true, "در حال بررسی…");
+      try {
+        const [realUser, realPass] = await Promise.all([
+          getSetting("admin_username"),
+          getSetting("admin_password"),
+        ]);
+        if (user === realUser && pass === realPass) {
+          sessionStorage.setItem("hayk_admin_auth", "1");
+          window.location.href = "admin.html";
+        } else {
+          showFormMsg(msg, "نام کاربری یا رمز عبور اشتباهه.");
+          setBtnLoading(submitBtn, false);
+        }
+      } catch (err) {
+        console.error(err);
+        showFormMsg(msg, "خطا در اتصال. تنظیمات Supabase رو بررسی کنید.");
+        setBtnLoading(submitBtn, false);
+      }
+    });
+  </script>
+</body>
+</html>
