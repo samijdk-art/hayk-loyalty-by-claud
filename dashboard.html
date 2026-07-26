@@ -83,6 +83,7 @@
             <button class="btn btn-dark btn-sm" id="minus-btn" style="flex:1;">− ۱ نوشیدنی</button>
             <button class="btn btn-primary btn-sm" id="plus-btn" style="flex:2;">+ ۱ نوشیدنی</button>
           </div>
+          <button class="btn btn-outline btn-sm btn-block mt-16 hidden" id="claim-prize-btn">✅ جایزه رو تحویل دادم</button>
         </div>
       </div>
     </div>
@@ -166,8 +167,10 @@
       if (customer.unclaimed_prize) {
         document.getElementById("prize-label").textContent = customer.unclaimed_prize;
         prizeBanner.classList.remove("hidden");
+        document.getElementById("claim-prize-btn").classList.remove("hidden");
       } else {
         prizeBanner.classList.add("hidden");
+        document.getElementById("claim-prize-btn").classList.add("hidden");
       }
 
       const wheelCard = document.getElementById("wheel-card");
@@ -327,6 +330,25 @@
 
     document.getElementById("plus-btn").addEventListener("click", () => adjustDrink(1));
     document.getElementById("minus-btn").addEventListener("click", () => adjustDrink(-1));
+
+    document.getElementById("claim-prize-btn").addEventListener("click", async () => {
+      if (!customer) return;
+      try {
+        const { data, error } = await supabaseClient
+          .from("customers")
+          .update({ unclaimed_prize: null })
+          .eq("id", customer.id)
+          .select()
+          .single();
+        if (error) throw error;
+        customer = data;
+        render();
+        showToast("جایزه تحویل‌داده‌شده ثبت شد ✅");
+      } catch (err) {
+        console.error(err);
+        showToast("مشکلی پیش اومد", true);
+      }
+    });
 
     load();
   </script>
