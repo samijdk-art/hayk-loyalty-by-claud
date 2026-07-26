@@ -50,6 +50,23 @@
       <div class="qr-wrap" id="qrcode"></div>
       <p class="center small muted">این کد رو موقع سفارش به باریستا نشون بدید</p>
 
+      <!-- Unclaimed prize banner -->
+      <div class="prize-banner hidden" id="prize-banner">
+        <div class="prize-label" id="prize-label"></div>
+        <div class="prize-hint">این پیام رو به باریستا نشون بدید تا جایزه‌تون رو بگیرید</div>
+      </div>
+
+      <!-- Wheel of fortune -->
+      <div class="wheel-card hidden" id="wheel-card">
+        <div class="title">🎰 یک چرخ شانس براتون باز شده!</div>
+        <div class="wheel-pointer"></div>
+        <div class="wheel" id="wheel">
+          <div class="wheel-center-dot"></div>
+        </div>
+        <button class="btn btn-primary btn-sm mt-16" id="spin-btn">بچرخون</button>
+        <div class="wheel-result" id="wheel-result"></div>
+      </div>
+
       <!-- Staff-only add drink box -->
       <div class="staff-box" id="staff-box">
         <div class="title">🔒 دسترسی کارکنان</div>
@@ -144,6 +161,96 @@
         colorLight: "#ffffff",
         correctLevel: QRCode.CorrectLevel.M,
       });
+
+      const prizeBanner = document.getElementById("prize-banner");
+      if (customer.unclaimed_prize) {
+        document.getElementById("prize-label").textContent = customer.unclaimed_prize;
+        prizeBanner.classList.remove("hidden");
+      } else {
+        prizeBanner.classList.add("hidden");
+      }
+
+      const wheelCard = document.getElementById("wheel-card");
+      if (customer.pending_spin) {
+        wheelCard.classList.remove("hidden");
+        resetWheelVisual();
+      } else {
+        wheelCard.classList.add("hidden");
+      }
+    }
+
+    // ---- spin wheel ----
+    function buildWheelBackground() {
+      const n = SPIN_PRIZES.length;
+      const seg = 360 / n;
+      const palette = ["#f5b04a", "#8a5a1f", "#d97706", "#a5711f", "#e8b563", "#6b4415", "#c9902f", "#5a3a12", "#f0a020", "#7a4d1a"];
+      const stops = [];
+      for (let i = 0; i < n; i++) {
+        const color = palette[i % palette.length];
+        stops.push(`${color} ${i * seg}deg ${(i + 1) * seg}deg`);
+      }
+      return `conic-gradient(from 0deg, ${stops.join(", ")})`;
+    }
+
+    function resetWheelVisual() {
+      const wheel = document.getElementById("wheel");
+      wheel.style.background = buildWheelBackground();
+      wheel.style.transition = "none";
+      wheel.style.transform = "rotate(0deg)";
+      document.getElementById("wheel-result").textContent = "";
+      document.getElementById("spin-btn").disabled = false;
+      // re-enable the transition on the next frame
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          wheel.style.transition = "transform 3.2s cubic-bezier(0.15,0.65,0.25,1)";
+        });
+      });
+    }
+
+    function pickPrizeIndex() {
+      const totalWeight = SPIN_PRIZES.reduce((s, p) => s + p.weight, 0);
+      let r = Math.random() * totalWeight;
+      for (let i = 0; i < SPIN_PRIZES.length; i++) {
+        r -= SPIN_PRIZES[i].weight;
+        if (r <= 0) return i;
+      }
+      return SPIN_PRIZES.length - 1;
+    }
+
+    document.getElementById("spin-btn").addEventListener("click", () => {
+      const btn = document.getElementById("spin-btn");
+      btn.disabled = true;
+      const idx = pickPrizeIndex();
+      const seg = 360 / SPIN_PRIZES.length;
+      const segCenter = idx * seg + seg / 2;
+      const finalRotation = 5 * 360 + (360 - segCenter);
+      document.getElementById("wheel").style.transform = `rotate(${finalRotation}deg)`;
+      setTimeout(() => applySpinResult(idx), 3300);
+    });
+
+    async function applySpinResult(idx) {
+      const prize = SPIN_PRIZES[idx];
+      const updates = { pending_spin: false };
+
+      if (prize.effect === "prize") {
+        updates.unclaimed_prize = prize.label;
+      }
+
+      try {
+        const { data, error } = await supabaseClient
+          .from("customers")
+          .update(updates)
+          .eq("id", customer.id)
+          .select()
+          .single();
+        if (error) throw error;
+        customer = data;
+        document.getElementById("wheel-result").textContent = prize.label;
+        setTimeout(() => render(), 1400);
+      } catch (err) {
+        console.error(err);
+        document.getElementById("wheel-result").textContent = "خطا در ثبت نتیجه";
+      }
     }
 
     // ---- staff unlock ----
@@ -169,7 +276,8 @@
 
     async function adjustDrink(delta) {
       if (!customer) return;
-      let { drink_count, total_drinks, free_drinks_redeemed } = customer;
+      let { drink_count, total_drinks, free_drinks_redeemed, pending_spin } = customer;
+      let wonSpin = false;
 
       if (delta > 0) {
         if (drink_count >= DRINKS_FOR_FREE) {
@@ -179,6 +287,11 @@
           drink_count += 1;
         }
         total_drinks = (total_drinks || 0) + 1;
+
+        if (!pending_spin && Math.random() < SPIN_CHANCE) {
+          pending_spin = true;
+          wonSpin = true;
+        }
       } else {
         if (drink_count > 0) {
           drink_count -= 1;
@@ -194,14 +307,18 @@
       try {
         const { data, error } = await supabaseClient
           .from("customers")
-          .update({ drink_count, total_drinks, free_drinks_redeemed })
+          .update({ drink_count, total_drinks, free_drinks_redeemed, pending_spin })
           .eq("id", customer.id)
           .select()
           .single();
         if (error) throw error;
         customer = data;
         render();
-        showToast(delta > 0 ? "یک نوشیدنی اضافه شد ☕" : "اصلاح شد");
+        if (wonSpin) {
+          showToast("🎰 تبریک! یک چرخ شانس باز شد");
+        } else {
+          showToast(delta > 0 ? "یک نوشیدنی اضافه شد ☕" : "اصلاح شد");
+        }
       } catch (err) {
         console.error(err);
         showToast("مشکلی پیش اومد", true);
