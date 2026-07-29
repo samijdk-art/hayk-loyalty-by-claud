@@ -16,7 +16,7 @@
         <div class="brand-eyebrow">HAYK</div>
       </div>
       <h1 class="page-title" style="font-size:32px;">ورود مشتری</h1>
-      <p class="page-sub">شماره موبایلی که باهاش عضو شدید رو وارد کنید تا امتیازهاتون رو ببینید.</p>
+      <p class="page-sub">شماره موبایل و کد ۴ رقمیتون رو وارد کنید تا امتیازهاتون رو ببینید.</p>
 
       <div id="msg" class="form-msg"></div>
 
@@ -24,6 +24,10 @@
         <div class="field">
           <label>شماره موبایل</label>
           <input type="tel" id="f-phone" placeholder="09xxxxxxxxx" required autofocus />
+        </div>
+        <div class="field">
+          <label>کد ۴ رقمی</label>
+          <input type="tel" id="f-pin" placeholder="مثلاً 1234" maxlength="4" inputmode="numeric" required />
         </div>
         <button type="submit" class="btn btn-primary" id="submit-btn">ورود به حساب من</button>
       </form>
@@ -46,7 +50,13 @@
       e.preventDefault();
       hideFormMsg(msg);
       const phone = normalizePhone(document.getElementById("f-phone").value);
+      const pin = document.getElementById("f-pin").value.trim();
       if (!phone) return;
+
+      if (!/^\d{4}$/.test(pin)) {
+        showFormMsg(msg, "کد باید دقیقاً ۴ رقم باشه (فقط عدد).");
+        return;
+      }
 
       setBtnLoading(submitBtn, true, "در حال جستجو…");
       try {
@@ -56,6 +66,25 @@
           setBtnLoading(submitBtn, false);
           return;
         }
+
+        if (!customer.pin) {
+          // Legacy customer from before the PIN feature existed —
+          // whatever they enter now becomes their PIN going forward.
+          const { error } = await supabaseClient
+            .from("customers")
+            .update({ pin })
+            .eq("id", customer.id);
+          if (error) throw error;
+          window.location.href = `dashboard.html?id=${customer.id}`;
+          return;
+        }
+
+        if (customer.pin !== pin) {
+          showFormMsg(msg, "کد وارد شده اشتباهه.");
+          setBtnLoading(submitBtn, false);
+          return;
+        }
+
         window.location.href = `dashboard.html?id=${customer.id}`;
       } catch (err) {
         console.error(err);
