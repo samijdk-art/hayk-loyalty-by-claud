@@ -15,11 +15,8 @@
         <div class="gold-rule"></div>
         <div class="brand-eyebrow">HAYK</div>
       </div>
-
       <h1 class="page-title" style="font-size:32px;">عضویت در باشگاه</h1>
-      <p class="page-sub">
-        اطلاعاتتون رو وارد کنید تا کارت وفاداری اختصاصی خودتون رو بگیرید.
-      </p>
+      <p class="page-sub">اطلاعاتتون رو وارد کنید تا کارت وفاداری اختصاصی خودتون رو بگیرید.</p>
 
       <div id="msg" class="form-msg"></div>
 
@@ -28,36 +25,34 @@
           <label>نام و نام خانوادگی</label>
           <input type="text" id="f-name" placeholder="مثلاً آرمان محمدی" required />
         </div>
-
         <div class="field">
           <label>شماره موبایل</label>
           <input type="tel" id="f-phone" placeholder="09xxxxxxxxx" required />
         </div>
-
         <div class="field">
           <label>یک کد ۴ رقمی بسازید (برای ورودهای بعدی)</label>
-          <input
-            type="tel"
-            id="f-pin"
-            placeholder="مثلاً 1234"
-            maxlength="4"
-            inputmode="numeric"
-            required
-          />
+          <input type="tel" id="f-pin" placeholder="مثلاً 1234" maxlength="4" inputmode="numeric" required />
         </div>
-
-        <button type="submit" class="btn btn-primary" id="submit-btn">
-          ساخت کارت وفاداری
-        </button>
+        <div class="field" style="display:flex; justify-content:center;">
+          <div id="recaptcha-box"></div>
+        </div>
+        <button type="submit" class="btn btn-primary" id="submit-btn">ساخت کارت وفاداری</button>
       </form>
     </div>
   </main>
 
+  <script src="https://www.google.com/recaptcha/api.js" async defer></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/davidshimjs-qrcodejs@0.0.2/qrcode.min.js"></script>
   <script src="js/config.js"></script>
   <script src="js/app.js"></script>
-
+  <script>
+    window.addEventListener("load", () => {
+      if (window.grecaptcha && RECAPTCHA_SITE_KEY && !RECAPTCHA_SITE_KEY.startsWith("YOUR-")) {
+        grecaptcha.render("recaptcha-box", { sitekey: RECAPTCHA_SITE_KEY });
+      }
+    });
+  </script>
   <script>
     const form = document.getElementById("join-form");
     const msg = document.getElementById("msg");
@@ -81,11 +76,35 @@
         return;
       }
 
+      const recaptchaEnabled = RECAPTCHA_SITE_KEY && !RECAPTCHA_SITE_KEY.startsWith("YOUR-");
+      let recaptchaToken = "";
+      if (recaptchaEnabled) {
+        recaptchaToken = window.grecaptcha ? grecaptcha.getResponse() : "";
+        if (!recaptchaToken) {
+          showFormMsg(msg, "لطفاً تیک «من ربات نیستم» رو بزنید.");
+          return;
+        }
+      }
+
       setBtnLoading(submitBtn, true, "در حال ثبت‌نام…");
 
       try {
-        const existing = await fetchCustomerByPhone(phone);
+        if (recaptchaEnabled) {
+          const verifyRes = await fetch("/api/verify-recaptcha", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ token: recaptchaToken }),
+          });
+          const verifyData = await verifyRes.json();
+          if (!verifyData.success) {
+            showFormMsg(msg, "تأیید امنیتی ناموفق بود، دوباره تلاش کنید.");
+            setBtnLoading(submitBtn, false);
+            if (window.grecaptcha) grecaptcha.reset();
+            return;
+          }
+        }
 
+        const existing = await fetchCustomerByPhone(phone);
         if (existing) {
           showFormMsg(
             msg,
@@ -93,6 +112,7 @@
             "info"
           );
           setBtnLoading(submitBtn, false);
+          if (window.grecaptcha) grecaptcha.reset();
           return;
         }
 
@@ -105,18 +125,16 @@
         if (error) throw error;
 
         showFormMsg(msg, "خوش اومدید! در حال انتقال به کارت شما…", "success");
-
         setTimeout(() => {
           window.location.href = `dashboard.html?id=${data.id}`;
         }, 900);
-
       } catch (err) {
         console.error(err);
         showFormMsg(msg, "مشکلی پیش اومد، دوباره تلاش کنید.");
         setBtnLoading(submitBtn, false);
+        if (window.grecaptcha) grecaptcha.reset();
       }
     });
   </script>
-
 </body>
 </html>
