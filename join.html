@@ -29,15 +29,30 @@
           <label>شماره موبایل</label>
           <input type="tel" id="f-phone" placeholder="09xxxxxxxxx" required />
         </div>
+        <div class="field">
+          <label>یک کد ۴ رقمی بسازید (برای ورودهای بعدی)</label>
+          <input type="tel" id="f-pin" placeholder="مثلاً 1234" maxlength="4" inputmode="numeric" required />
+        </div>
+        <div class="field" style="display:flex; justify-content:center;">
+          <div id="recaptcha-box"></div>
+        </div>
         <button type="submit" class="btn btn-primary" id="submit-btn">ساخت کارت وفاداری</button>
       </form>
     </div>
   </main>
 
+  <script src="https://www.google.com/recaptcha/api.js" async defer></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/davidshimjs-qrcodejs@0.0.2/qrcode.min.js"></script>
   <script src="js/config.js"></script>
   <script src="js/app.js"></script>
+  <script>
+    window.addEventListener("load", () => {
+      if (window.grecaptcha && RECAPTCHA_SITE_KEY && !RECAPTCHA_SITE_KEY.startsWith("YOUR-")) {
+        grecaptcha.render("recaptcha-box", { sitekey: RECAPTCHA_SITE_KEY });
+      }
+    });
+  </script>
   <script>
     const form = document.getElementById("join-form");
     const msg = document.getElementById("msg");
@@ -49,31 +64,61 @@
 
       const name = document.getElementById("f-name").value.trim();
       const phone = normalizePhone(document.getElementById("f-phone").value);
+      const pin = document.getElementById("f-pin").value.trim();
 
       if (!name || !phone) {
         showFormMsg(msg, "لطفاً نام و شماره موبایل رو کامل وارد کنید.");
         return;
       }
 
+      if (!/^\d{4}$/.test(pin)) {
+        showFormMsg(msg, "کد باید دقیقاً ۴ رقم باشه (فقط عدد).");
+        return;
+      }
+
+      const recaptchaEnabled = RECAPTCHA_SITE_KEY && !RECAPTCHA_SITE_KEY.startsWith("YOUR-");
+      let recaptchaToken = "";
+      if (recaptchaEnabled) {
+        recaptchaToken = window.grecaptcha ? grecaptcha.getResponse() : "";
+        if (!recaptchaToken) {
+          showFormMsg(msg, "لطفاً تیک «من ربات نیستم» رو بزنید.");
+          return;
+        }
+      }
+
       setBtnLoading(submitBtn, true, "در حال ثبت‌نام…");
 
       try {
+        if (recaptchaEnabled) {
+          const verifyRes = await fetch("/api/verify-recaptcha", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ token: recaptchaToken }),
+          });
+          const verifyData = await verifyRes.json();
+          if (!verifyData.success) {
+            showFormMsg(msg, "تأیید امنیتی ناموفق بود، دوباره تلاش کنید.");
+            setBtnLoading(submitBtn, false);
+            if (window.grecaptcha) grecaptcha.reset();
+            return;
+          }
+        }
+
         const existing = await fetchCustomerByPhone(phone);
         if (existing) {
           showFormMsg(
             msg,
-            "این شماره قبلاً ثبت شده. در حال انتقال به داشبورد شما…",
+            "این شماره قبلاً ثبت شده. لطفاً از «ورود مشتری» با کد ۴ رقمیتون وارد بشید.",
             "info"
           );
-          setTimeout(() => {
-            window.location.href = `dashboard.html?id=${existing.id}`;
-          }, 1200);
+          setBtnLoading(submitBtn, false);
+          if (window.grecaptcha) grecaptcha.reset();
           return;
         }
 
         const { data, error } = await supabaseClient
           .from("customers")
-          .insert({ name, phone })
+          .insert({ name, phone, pin })
           .select()
           .single();
 
@@ -87,6 +132,7 @@
         console.error(err);
         showFormMsg(msg, "مشکلی پیش اومد، دوباره تلاش کنید.");
         setBtnLoading(submitBtn, false);
+        if (window.grecaptcha) grecaptcha.reset();
       }
     });
   </script>
