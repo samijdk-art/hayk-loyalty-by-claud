@@ -47,3 +47,4 @@ const SPIN_PRIZES = [
   { label: "🌟 نزدیک بود! دوباره امتحان کن", effect: "none", weight: 10 },
   { label: "🎯 دفعه‌ی بعد شانست بیشتره", effect: "none", weight: 10 },
 ];
+const PIN_GRACE_DEADLINE = "2026-08-14T23:59:59";
