@@ -29,6 +29,9 @@
           <label>کد ۴ رقمی</label>
           <input type="tel" id="f-pin" placeholder="مثلاً 1234" maxlength="4" inputmode="numeric" required />
         </div>
+        <p class="small muted" style="margin-top:-10px; margin-bottom:18px;">
+          اگه اولین باره وارد می‌شید، همین کد، کد همیشگی حساب‌تون می‌شه.
+        </p>
         <button type="submit" class="btn btn-primary" id="submit-btn">ورود به حساب من</button>
       </form>
 
@@ -68,6 +71,16 @@
         }
 
         if (!customer.pin) {
+          const deadlinePassed = new Date() > new Date(PIN_GRACE_DEADLINE);
+          if (deadlinePassed) {
+            showFormMsg(
+              msg,
+              "این حساب هنوز کد ورود نداره و مهلت ساخت خودکار کد تموم شده. لطفاً از پرسنل کافه بخواید کدتون رو از پنل مدیریت براتون تنظیم کنن.",
+              "error"
+            );
+            setBtnLoading(submitBtn, false);
+            return;
+          }
           // Legacy customer from before the PIN feature existed —
           // whatever they enter now becomes their PIN going forward.
           const { error } = await supabaseClient
@@ -75,7 +88,10 @@
             .update({ pin })
             .eq("id", customer.id);
           if (error) throw error;
-          window.location.href = `dashboard.html?id=${customer.id}`;
+          showFormMsg(msg, "کد شما ثبت شد ✅ از این به بعد همینو وارد کنید. در حال ورود…", "success");
+          setTimeout(() => {
+            window.location.href = `dashboard.html?id=${customer.id}`;
+          }, 1300);
           return;
         }
 
