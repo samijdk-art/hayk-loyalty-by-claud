@@ -20,7 +20,7 @@
 
       <div id="loading-msg" class="center muted"><span class="loading-dot"></span>در حال بارگذاری منو…</div>
       <div id="empty-msg" class="center muted hidden">فعلاً آیتمی توی منو ثبت نشده.</div>
-      <div class="menu-grid" id="menu-grid"></div>
+      <div id="menu-container"></div>
     </div>
   </main>
 
@@ -48,23 +48,43 @@
         return;
       }
 
-      const grid = document.getElementById("menu-grid");
-      grid.innerHTML = "";
+      // group items by category, preserving the order categories first appear in
+      const groups = [];
+      const groupIndex = {};
       for (const item of data) {
-        const card = document.createElement("div");
-        card.className = "menu-item";
-        card.innerHTML = `
-          ${item.image_url
-            ? `<img class="photo" src="${item.image_url}" alt="${escapeHtml(item.name)}" loading="lazy" />`
-            : `<div class="photo-placeholder">☕</div>`
-          }
-          <div class="info">
-            <div class="item-name">${escapeHtml(item.name)}</div>
-            ${item.description ? `<div class="item-desc">${escapeHtml(item.description)}</div>` : ""}
-            ${item.price ? `<div class="item-price">${escapeHtml(item.price)}</div>` : ""}
-          </div>
-        `;
-        grid.appendChild(card);
+        const cat = item.category && item.category.trim() ? item.category.trim() : "سایر";
+        if (!(cat in groupIndex)) {
+          groupIndex[cat] = groups.length;
+          groups.push({ category: cat, items: [] });
+        }
+        groups[groupIndex[cat]].items.push(item);
+      }
+
+      const container = document.getElementById("menu-container");
+      container.innerHTML = "";
+      for (const group of groups) {
+        const section = document.createElement("div");
+        section.innerHTML = `<div class="section-title">${escapeHtml(group.category)}</div>`;
+        const grid = document.createElement("div");
+        grid.className = "menu-grid";
+        for (const item of group.items) {
+          const card = document.createElement("div");
+          card.className = "menu-item";
+          card.innerHTML = `
+            ${item.image_url
+              ? `<img class="photo" src="${item.image_url}" alt="${escapeHtml(item.name)}" loading="lazy" />`
+              : `<div class="photo-placeholder">☕</div>`
+            }
+            <div class="info">
+              <div class="item-name">${escapeHtml(item.name)}</div>
+              ${item.description ? `<div class="item-desc">${escapeHtml(item.description)}</div>` : ""}
+              ${item.price ? `<div class="item-price">${escapeHtml(item.price)}</div>` : ""}
+            </div>
+          `;
+          grid.appendChild(card);
+        }
+        section.appendChild(grid);
+        container.appendChild(section);
       }
     }
 
