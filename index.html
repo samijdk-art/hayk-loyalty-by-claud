@@ -5,8 +5,24 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>HAYK — باشگاه وفاداری</title>
 <link rel="stylesheet" href="css/styles.css" />
+<style>
+  .bg-slideshow{ position:fixed; inset:0; z-index:-2; overflow:hidden; background:#000; }
+  .bg-slide{
+    position:absolute; inset:0;
+    background-size:cover; background-position:center;
+    opacity:0; transition: opacity 1.8s ease;
+  }
+  .bg-slide.active{ opacity:1; }
+  .bg-overlay{
+    position:fixed; inset:0; z-index:-1;
+    background: radial-gradient(ellipse 900px 700px at 50% 15%, rgba(43,28,16,0.82) 0%, rgba(20,13,8,0.88) 45%, rgba(5,3,2,0.94) 100%);
+  }
+</style>
 </head>
 <body>
+
+  <div class="bg-slideshow" id="bg-slideshow"></div>
+  <div class="bg-overlay"></div>
 
   <main class="page">
     <div class="card">
@@ -42,5 +58,40 @@
     </div>
   </main>
 
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/config.js"></script>
+  <script src="js/app.js"></script>
+  <script>
+    async function loadBackgroundSlideshow() {
+      try {
+        const { data, error } = await supabaseClient
+          .from("bg_images")
+          .select("*")
+          .order("sort_order", { ascending: true });
+        if (error || !data || data.length === 0) return;
+
+        const container = document.getElementById("bg-slideshow");
+        data.forEach((img, i) => {
+          const slide = document.createElement("div");
+          slide.className = "bg-slide" + (i === 0 ? " active" : "");
+          slide.style.backgroundImage = `url("${img.image_url}")`;
+          container.appendChild(slide);
+        });
+
+        if (data.length > 1) {
+          let current = 0;
+          const slides = container.querySelectorAll(".bg-slide");
+          setInterval(() => {
+            slides[current].classList.remove("active");
+            current = (current + 1) % slides.length;
+            slides[current].classList.add("active");
+          }, 6000);
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    }
+    loadBackgroundSlideshow();
+  </script>
 </body>
 </html>
