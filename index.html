@@ -6,7 +6,8 @@
 <title>HAYK — باشگاه وفاداری</title>
 <link rel="stylesheet" href="css/styles.css" />
 <style>
-  .bg-slideshow{ position:fixed; inset:0; z-index:-2; overflow:hidden; background:#000; }
+  html, body{ background: #000 !important; }
+  .bg-slideshow{ position:fixed; inset:0; z-index:0; overflow:hidden; background:#000; }
   .bg-slide{
     position:absolute; inset:0;
     background-size:cover; background-position:center;
@@ -14,9 +15,10 @@
   }
   .bg-slide.active{ opacity:1; }
   .bg-overlay{
-    position:fixed; inset:0; z-index:-1;
+    position:fixed; inset:0; z-index:1;
     background: rgba(10,6,3,0.5);
   }
+  main.page{ position:relative; z-index:2; }
 </style>
 </head>
 <body>
