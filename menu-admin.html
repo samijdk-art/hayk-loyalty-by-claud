@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>مدیریت منو — HAYK</title>
+<link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+
+  <main class="page page-wide">
+    <div class="card">
+      <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:14px; margin-bottom:8px;">
+        <div class="brand-top" style="align-items:flex-start; margin-bottom:0;">
+          <div class="brand-eyebrow">HAYK — مدیریت منو</div>
+        </div>
+        <a href="admin.html" class="btn btn-outline btn-sm">→ بازگشت به پنل مشتری‌ها</a>
+      </div>
+
+      <div class="section-title">افزودن آیتم جدید</div>
+      <div id="add-msg" class="form-msg"></div>
+      <div class="field">
+        <label>اسم آیتم</label>
+        <input type="text" id="n-name" placeholder="مثلاً لاته وانیل" />
+      </div>
+      <div class="field">
+        <label>توضیح کوتاه (اختیاری)</label>
+        <input type="text" id="n-desc" placeholder="مثلاً با شیر بادام و کاراملِ خانگی" />
+      </div>
+      <div class="field">
+        <label>قیمت (اختیاری، فقط متن)</label>
+        <input type="text" id="n-price" placeholder="مثلاً ۹۵٬۰۰۰ تومان" />
+      </div>
+      <div class="field">
+        <label>ترتیب نمایش (عدد کوچیک‌تر = بالاتر)</label>
+        <input type="number" id="n-order" value="0" />
+      </div>
+      <div class="field">
+        <label>عکس آیتم</label>
+        <div class="file-drop" id="file-drop-zone">📷 برای انتخاب عکس کلیک کنید</div>
+        <input type="file" id="n-file" accept="image/*" class="hidden" />
+        <img id="n-preview" class="file-preview hidden" />
+      </div>
+      <button class="btn btn-primary btn-block mt-16" id="add-btn">افزودن به منو</button>
+
+      <div class="divider-line"></div>
+
+      <div class="section-title">آیتم‌های فعلی منو</div>
+      <div id="list-loading" class="center muted"><span class="loading-dot"></span>در حال بارگذاری…</div>
+      <div class="menu-admin-list" id="menu-list"></div>
+    </div>
+  </main>
+
+  <!-- Edit modal -->
+  <div class="modal-overlay" id="edit-modal">
+    <div class="modal-box">
+      <div class="modal-title">ویرایش آیتم منو</div>
+      <div id="edit-msg" class="form-msg"></div>
+      <div class="field"><label>اسم آیتم</label><input type="text" id="e-name" /></div>
+      <div class="field"><label>توضیح کوتاه</label><input type="text" id="e-desc" /></div>
+      <div class="field"><label>قیمت</label><input type="text" id="e-price" /></div>
+      <div class="field"><label>ترتیب نمایش</label><input type="number" id="e-order" /></div>
+      <div class="field">
+        <label>عوض کردن عکس (اختیاری)</label>
+        <div class="file-drop" id="edit-file-drop-zone">📷 برای انتخاب عکس جدید کلیک کنید</div>
+        <input type="file" id="e-file" accept="image/*" class="hidden" />
+        <img id="e-preview" class="file-preview hidden" />
+      </div>
+      <div class="btn-row mt-16">
+        <button class="btn btn-dark" id="edit-cancel">انصراف</button>
+        <button class="btn btn-primary" id="edit-save">ذخیره</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/config.js"></script>
+  <script src="js/app.js"></script>
+  <script>
+    if (sessionStorage.getItem("hayk_admin_auth") !== "1") {
+      window.location.href = "staff-admin.html";
+    }
+
+    function escapeHtml(str) {
+      const d = document.createElement("div");
+      d.textContent = str ?? "";
+      return d.innerHTML;
+    }
+
+    async function uploadImage(file) {
+      const ext = file.name.split(".").pop();
+      const path = `${crypto.randomUUID()}.${ext}`;
+      const { error } = await supabaseClient.storage.from("menu-images").upload(path, file);
+      if (error) throw error;
+      const { data } = supabaseClient.storage.from("menu-images").getPublicUrl(path);
+      return data.publicUrl;
+    }
+
+    // ---- file preview (add form) ----
+    const fileInput = document.getElementById("n-file");
+    document.getElementById("file-drop-zone").addEventListener("click", () => fileInput.click());
+    fileInput.addEventListener("change", () => {
+      const file = fileInput.files[0];
+      if (!file) return;
+      const preview = document.getElementById("n-preview");
+      preview.src = URL.createObjectURL(file);
+      preview.classList.remove("hidden");
+    });
+
+    // ---- add new item ----
+    document.getElementById("add-btn").addEventListener("click", async () => {
+      const msg = document.getElementById("add-msg");
+      hideFormMsg(msg);
+      const btn = document.getElementById("add-btn");
+
+      const name = document.getElementById("n-name").value.trim();
+      const description = document.getElementById("n-desc").value.trim();
+      const price = document.getElementById("n-price").value.trim();
+      const sort_order = parseInt(document.getElementById("n-order").value, 10) || 0;
+      const file = fileInput.files[0];
+
+      if (!name) {
+        showFormMsg(msg, "اسم آیتم رو وارد کنید.");
+        return;
+      }
+
+      setBtnLoading(btn, true, "در حال افزودن…");
+      try {
+        let image_url = null;
+        if (file) {
+          image_url = await uploadImage(file);
+        }
+        const { error } = await supabaseClient
+          .from("menu_items")
+          .insert({ name, description: description || null, price: price || null, sort_order, image_url });
+        if (error) throw error;
+
+        showFormMsg(msg, "آیتم اضافه شد ✅", "success");
+        document.getElementById("n-name").value = "";
+        document.getElementById("n-desc").value = "";
+        document.getElementById("n-price").value = "";
+        document.getElementById("n-order").value = "0";
+        fileInput.value = "";
+        document.getElementById("n-preview").classList.add("hidden");
+        setBtnLoading(btn, false);
+        loadList();
+      } catch (err) {
+        console.error(err);
+        showFormMsg(msg, "خطا در افزودن آیتم.");
+        setBtnLoading(btn, false);
+      }
+    });
+
+    // ---- list existing items ----
+    let allItems = [];
+
+    async function loadList() {
+      const { data, error } = await supabaseClient
+        .from("menu_items")
+        .select("*")
+        .order("sort_order", { ascending: true });
+      document.getElementById("list-loading").classList.add("hidden");
+      if (error) {
+        console.error(error);
+        showToast("خطا در بارگذاری لیست منو", true);
+        return;
+      }
+      allItems = data || [];
+      renderList();
+    }
+
+    function renderList() {
+      const wrap = document.getElementById("menu-list");
+      wrap.innerHTML = "";
+      for (const item of allItems) {
+        const card = document.createElement("div");
+        card.className = "menu-admin-card";
+        card.innerHTML = `
+          ${item.image_url
+            ? `<img class="photo" src="${item.image_url}" alt="${escapeHtml(item.name)}" />`
+            : `<div class="photo-placeholder">☕</div>`
+          }
+          <div class="body">
+            <div class="name">${escapeHtml(item.name)}</div>
+            <div class="price">${escapeHtml(item.price || "—")}</div>
+            <div class="actions">
+              <button class="icon-btn" data-act="edit" data-id="${item.id}" title="ویرایش">✎</button>
+              <button class="icon-btn danger" data-act="delete" data-id="${item.id}" title="حذف">🗑</button>
+            </div>
+          </div>
+        `;
+        wrap.appendChild(card);
+      }
+    }
+
+    document.getElementById("menu-list").addEventListener("click", async (e) => {
+      const btn = e.target.closest("button[data-act]");
+      if (!btn) return;
+      const item = allItems.find((i) => i.id === btn.dataset.id);
+      if (!item) return;
+
+      if (btn.dataset.act === "delete") {
+        if (confirm(`آیتم «${item.name}» از منو حذف بشه؟`)) {
+          const { error } = await supabaseClient.from("menu_items").delete().eq("id", item.id);
+          if (error) { showToast("خطا در حذف", true); return; }
+          showToast("آیتم حذف شد");
+          loadList();
+        }
+      } else if (btn.dataset.act === "edit") {
+        openEdit(item);
+      }
+    });
+
+    // ---- edit modal ----
+    const editModal = document.getElementById("edit-modal");
+    let editingItem = null;
+    const editFileInput = document.getElementById("e-file");
+
+    document.getElementById("edit-file-drop-zone").addEventListener("click", () => editFileInput.click());
+    editFileInput.addEventListener("change", () => {
+      const file = editFileInput.files[0];
+      if (!file) return;
+      const preview = document.getElementById("e-preview");
+      preview.src = URL.createObjectURL(file);
+      preview.classList.remove("hidden");
+    });
+
+    function openEdit(item) {
+      editingItem = item;
+      document.getElementById("e-name").value = item.name;
+      document.getElementById("e-desc").value = item.description || "";
+      document.getElementById("e-price").value = item.price || "";
+      document.getElementById("e-order").value = item.sort_order || 0;
+      editFileInput.value = "";
+      const preview = document.getElementById("e-preview");
+      if (item.image_url) {
+        preview.src = item.image_url;
+        preview.classList.remove("hidden");
+      } else {
+        preview.classList.add("hidden");
+      }
+      hideFormMsg(document.getElementById("edit-msg"));
+      editModal.classList.add("show");
+    }
+
+    document.getElementById("edit-cancel").addEventListener("click", () => editModal.classList.remove("show"));
+
+    document.getElementById("edit-save").addEventListener("click", async () => {
+      const msg = document.getElementById("edit-msg");
+      const saveBtn = document.getElementById("edit-save");
+      const name = document.getElementById("e-name").value.trim();
+      const description = document.getElementById("e-desc").value.trim();
+      const price = document.getElementById("e-price").value.trim();
+      const sort_order = parseInt(document.getElementById("e-order").value, 10) || 0;
+
+      if (!name) { showFormMsg(msg, "اسم آیتم نمی‌تونه خالی باشه."); return; }
+
+      setBtnLoading(saveBtn, true, "در حال ذخیره…");
+      try {
+        const updates = { name, description: description || null, price: price || null, sort_order };
+        const file = editFileInput.files[0];
+        if (file) {
+          updates.image_url = await uploadImage(file);
+        }
+        const { error } = await supabaseClient
+          .from("menu_items")
+          .update(updates)
+          .eq("id", editingItem.id);
+        if (error) throw error;
+        editModal.classList.remove("show");
+        setBtnLoading(saveBtn, false);
+        showToast("تغییرات ذخیره شد");
+        loadList();
+      } catch (err) {
+        console.error(err);
+        showFormMsg(msg, "خطا در ذخیره‌سازی.");
+        setBtnLoading(saveBtn, false);
+      }
+    });
+
+    loadList();
+  </script>
+</body>
+</html>
