@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>مدیریت پس‌زمینه — HAYK</title>
+<link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+
+  <main class="page page-wide">
+    <div class="card">
+      <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:14px; margin-bottom:8px;">
+        <div class="brand-top" style="align-items:flex-start; margin-bottom:0;">
+          <div class="brand-eyebrow">HAYK — پس‌زمینه‌ی صفحه اصلی</div>
+        </div>
+        <a href="admin.html" class="btn btn-outline btn-sm">→ بازگشت به پنل مشتری‌ها</a>
+      </div>
+      <p class="page-sub" style="margin:14px 0 0; text-align:right; max-width:none;">
+        عکس‌هایی که اینجا اضافه کنید، به‌صورت اسلایدشو (با افکت محو) پشت صفحه‌ی اصلی سایت نمایش داده می‌شن.
+      </p>
+
+      <div class="section-title">افزودن عکس جدید</div>
+      <div id="add-msg" class="form-msg"></div>
+      <div class="field">
+        <label>ترتیب نمایش (عدد کوچیک‌تر = زودتر نشون داده می‌شه)</label>
+        <input type="number" id="n-order" value="0" />
+      </div>
+      <div class="field">
+        <label>عکس</label>
+        <div class="file-drop" id="file-drop-zone">📷 برای انتخاب عکس کلیک کنید</div>
+        <input type="file" id="n-file" accept="image/*" class="hidden" />
+        <img id="n-preview" class="file-preview hidden" />
+      </div>
+      <button class="btn btn-primary btn-block mt-16" id="add-btn">افزودن به اسلایدشو</button>
+
+      <div class="divider-line"></div>
+
+      <div class="section-title">عکس‌های فعلی</div>
+      <div id="list-loading" class="center muted"><span class="loading-dot"></span>در حال بارگذاری…</div>
+      <p class="center muted small hidden" id="empty-msg">هنوز عکسی اضافه نکردید.</p>
+      <div class="menu-admin-list" id="bg-list"></div>
+    </div>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/config.js"></script>
+  <script src="js/app.js"></script>
+  <script>
+    if (sessionStorage.getItem("hayk_admin_auth") !== "1") {
+      window.location.href = "staff-admin.html";
+    }
+
+    async function uploadImage(file) {
+      const ext = file.name.split(".").pop();
+      const path = `${crypto.randomUUID()}.${ext}`;
+      const { error } = await supabaseClient.storage.from("bg-images").upload(path, file);
+      if (error) throw error;
+      const { data } = supabaseClient.storage.from("bg-images").getPublicUrl(path);
+      return data.publicUrl;
+    }
+
+    const fileInput = document.getElementById("n-file");
+    document.getElementById("file-drop-zone").addEventListener("click", () => fileInput.click());
+    fileInput.addEventListener("change", () => {
+      const file = fileInput.files[0];
+      if (!file) return;
+      const preview = document.getElementById("n-preview");
+      preview.src = URL.createObjectURL(file);
+      preview.classList.remove("hidden");
+    });
+
+    document.getElementById("add-btn").addEventListener("click", async () => {
+      const msg = document.getElementById("add-msg");
+      hideFormMsg(msg);
+      const btn = document.getElementById("add-btn");
+      const sort_order = parseInt(document.getElementById("n-order").value, 10) || 0;
+      const file = fileInput.files[0];
+
+      if (!file) { showFormMsg(msg, "یه عکس انتخاب کنید."); return; }
+
+      setBtnLoading(btn, true, "در حال آپلود…");
+      try {
+        const image_url = await uploadImage(file);
+        const { error } = await supabaseClient.from("bg_images").insert({ image_url, sort_order });
+        if (error) throw error;
+
+        showFormMsg(msg, "عکس اضافه شد ✅", "success");
+        document.getElementById("n-order").value = "0";
+        fileInput.value = "";
+        document.getElementById("n-preview").classList.add("hidden");
+        setBtnLoading(btn, false);
+        loadList();
+      } catch (err) {
+        console.error(err);
+        showFormMsg(msg, "خطا در آپلود عکس.");
+        setBtnLoading(btn, false);
+      }
+    });
+
+    let allImages = [];
+
+    async function loadList() {
+      const { data, error } = await supabaseClient
+        .from("bg_images")
+        .select("*")
+        .order("sort_order", { ascending: true });
+      document.getElementById("list-loading").classList.add("hidden");
+      if (error) { console.error(error); showToast("خطا در بارگذاری لیست", true); return; }
+      allImages = data || [];
+      document.getElementById("empty-msg").classList.toggle("hidden", allImages.length > 0);
+      renderList();
+    }
+
+    function renderList() {
+      const wrap = document.getElementById("bg-list");
+      wrap.innerHTML = "";
+      for (const img of allImages) {
+        const card = document.createElement("div");
+        card.className = "menu-admin-card";
+        card.innerHTML = `
+          <img class="photo" src="${img.image_url}" alt="background" />
+          <div class="body">
+            <div class="small muted" style="margin-bottom:10px;">ترتیب: ${img.sort_order}</div>
+            <div class="actions">
+              <button class="icon-btn danger" data-id="${img.id}" title="حذف">🗑</button>
+            </div>
+          </div>
+        `;
+        wrap.appendChild(card);
+      }
+    }
+
+    document.getElementById("bg-list").addEventListener("click", async (e) => {
+      const btn = e.target.closest("button[data-id]");
+      if (!btn) return;
+      if (confirm("این عکس از اسلایدشو حذف بشه؟")) {
+        const { error } = await supabaseClient.from("bg_images").delete().eq("id", btn.dataset.id);
+        if (error) { showToast("خطا در حذف", true); return; }
+        showToast("عکس حذف شد");
+        loadList();
+      }
+    });
+
+    loadList();
+  </script>
+</body>
+</html>
