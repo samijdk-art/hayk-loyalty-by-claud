@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>منوی کافه — HAYK</title>
+<link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+
+  <main class="page page-wide">
+    <a href="index.html" class="link-back">→ بازگشت</a>
+    <div class="card">
+      <div class="brand-top">
+        <div class="gold-rule"></div>
+        <div class="brand-eyebrow">HAYK</div>
+      </div>
+      <h1 class="page-title" style="font-size:32px;">منوی کافه</h1>
+      <p class="page-sub">طعم‌هایی که منتظرتون هستن ☕</p>
+
+      <div id="loading-msg" class="center muted"><span class="loading-dot"></span>در حال بارگذاری منو…</div>
+      <div id="empty-msg" class="center muted hidden">فعلاً آیتمی توی منو ثبت نشده.</div>
+      <div class="menu-grid" id="menu-grid"></div>
+    </div>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/config.js"></script>
+  <script src="js/app.js"></script>
+  <script>
+    async function loadMenu() {
+      const { data, error } = await supabaseClient
+        .from("menu_items")
+        .select("*")
+        .order("sort_order", { ascending: true });
+
+      document.getElementById("loading-msg").classList.add("hidden");
+
+      if (error) {
+        console.error(error);
+        document.getElementById("empty-msg").textContent = "خطا در بارگذاری منو.";
+        document.getElementById("empty-msg").classList.remove("hidden");
+        return;
+      }
+
+      if (!data || data.length === 0) {
+        document.getElementById("empty-msg").classList.remove("hidden");
+        return;
+      }
+
+      const grid = document.getElementById("menu-grid");
+      grid.innerHTML = "";
+      for (const item of data) {
+        const card = document.createElement("div");
+        card.className = "menu-item";
+        card.innerHTML = `
+          ${item.image_url
+            ? `<img class="photo" src="${item.image_url}" alt="${escapeHtml(item.name)}" loading="lazy" />`
+            : `<div class="photo-placeholder">☕</div>`
+          }
+          <div class="info">
+            <div class="item-name">${escapeHtml(item.name)}</div>
+            ${item.description ? `<div class="item-desc">${escapeHtml(item.description)}</div>` : ""}
+            ${item.price ? `<div class="item-price">${escapeHtml(item.price)}</div>` : ""}
+          </div>
+        `;
+        grid.appendChild(card);
+      }
+    }
+
+    function escapeHtml(str) {
+      const d = document.createElement("div");
+      d.textContent = str ?? "";
+      return d.innerHTML;
+    }
+
+    loadMenu();
+  </script>
+</body>
+</html>
