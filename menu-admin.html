@@ -24,6 +24,10 @@
         <input type="text" id="n-name" placeholder="مثلاً لاته وانیل" />
       </div>
       <div class="field">
+        <label>دسته‌بندی</label>
+        <input type="text" id="n-category" placeholder="مثلاً نوشیدنی گرم، نوشیدنی سرد، شیرینی" />
+      </div>
+      <div class="field">
         <label>توضیح کوتاه (اختیاری)</label>
         <input type="text" id="n-desc" placeholder="مثلاً با شیر بادام و کاراملِ خانگی" />
       </div>
@@ -57,6 +61,7 @@
       <div class="modal-title">ویرایش آیتم منو</div>
       <div id="edit-msg" class="form-msg"></div>
       <div class="field"><label>اسم آیتم</label><input type="text" id="e-name" /></div>
+      <div class="field"><label>دسته‌بندی</label><input type="text" id="e-category" placeholder="مثلاً نوشیدنی گرم" /></div>
       <div class="field"><label>توضیح کوتاه</label><input type="text" id="e-desc" /></div>
       <div class="field"><label>قیمت</label><input type="text" id="e-price" /></div>
       <div class="field"><label>ترتیب نمایش</label><input type="number" id="e-order" /></div>
@@ -114,6 +119,7 @@
       const btn = document.getElementById("add-btn");
 
       const name = document.getElementById("n-name").value.trim();
+      const category = document.getElementById("n-category").value.trim();
       const description = document.getElementById("n-desc").value.trim();
       const price = document.getElementById("n-price").value.trim();
       const sort_order = parseInt(document.getElementById("n-order").value, 10) || 0;
@@ -132,11 +138,12 @@
         }
         const { error } = await supabaseClient
           .from("menu_items")
-          .insert({ name, description: description || null, price: price || null, sort_order, image_url });
+          .insert({ name, category: category || null, description: description || null, price: price || null, sort_order, image_url });
         if (error) throw error;
 
         showFormMsg(msg, "آیتم اضافه شد ✅", "success");
         document.getElementById("n-name").value = "";
+        document.getElementById("n-category").value = "";
         document.getElementById("n-desc").value = "";
         document.getElementById("n-price").value = "";
         document.getElementById("n-order").value = "0";
@@ -182,6 +189,7 @@
           }
           <div class="body">
             <div class="name">${escapeHtml(item.name)}</div>
+            ${item.category ? `<div class="small muted" style="margin-bottom:4px;">${escapeHtml(item.category)}</div>` : ""}
             <div class="price">${escapeHtml(item.price || "—")}</div>
             <div class="actions">
               <button class="icon-btn" data-act="edit" data-id="${item.id}" title="ویرایش">✎</button>
@@ -228,6 +236,7 @@
     function openEdit(item) {
       editingItem = item;
       document.getElementById("e-name").value = item.name;
+      document.getElementById("e-category").value = item.category || "";
       document.getElementById("e-desc").value = item.description || "";
       document.getElementById("e-price").value = item.price || "";
       document.getElementById("e-order").value = item.sort_order || 0;
@@ -249,6 +258,7 @@
       const msg = document.getElementById("edit-msg");
       const saveBtn = document.getElementById("edit-save");
       const name = document.getElementById("e-name").value.trim();
+      const category = document.getElementById("e-category").value.trim();
       const description = document.getElementById("e-desc").value.trim();
       const price = document.getElementById("e-price").value.trim();
       const sort_order = parseInt(document.getElementById("e-order").value, 10) || 0;
@@ -257,7 +267,7 @@
 
       setBtnLoading(saveBtn, true, "در حال ذخیره…");
       try {
-        const updates = { name, description: description || null, price: price || null, sort_order };
+        const updates = { name, category: category || null, description: description || null, price: price || null, sort_order };
         const file = editFileInput.files[0];
         if (file) {
           updates.image_url = await uploadImage(file);
