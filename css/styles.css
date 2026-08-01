@@ -268,6 +268,78 @@ h1,h2,h3{ font-family:'Playfair Display', serif; margin:0; }
   border: 1px dashed var(--gold-soft);
   color: var(--gold);
 }
+/* ---------- bigger, clearer drink counter ---------- */
+.drink-counter-big{
+  text-align:center;
+  margin: 20px 0 4px;
+}
+.drink-counter-big .num{
+  font-family:'Playfair Display', serif;
+  font-size: 46px;
+  font-weight: 800;
+  color: var(--gold);
+  line-height: 1;
+}
+.drink-counter-big .num .of{
+  font-size: 24px;
+  color: var(--text-lo);
+  font-weight: 600;
+}
+.drink-counter-big .label{
+  font-size: 13px;
+  color: var(--text-lo);
+  margin-top: 6px;
+}
+
+.cup-row.big{ gap: 10px; margin: 22px 0; }
+.cup-row.big .cup{
+  width: 46px; height: 46px;
+  font-size: 20px;
+  position: relative;
+  transition: transform .2s ease;
+}
+.cup-row.big .cup.filled{
+  box-shadow: 0 4px 14px -4px rgba(217,119,6,0.6);
+}
+.cup-row.big .cup.filled::after{
+  content: "✓";
+  position: absolute;
+  bottom: -4px; left: -4px;
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  background: var(--success);
+  color: #0c1f10;
+  font-size: 11px; font-weight: 800;
+  display:flex; align-items:center; justify-content:center;
+  border: 2px solid var(--bg-0);
+}
+.cup-row.big .cup.free.ready{
+  border: none;
+  color: #2a1404;
+  background: linear-gradient(135deg, var(--orange-1), var(--orange-2));
+  animation: cup-glow 1.5s ease-in-out infinite;
+}
+
+@keyframes cup-glow{
+  0%, 100%{ box-shadow: 0 0 0 0 rgba(217,119,6,0.55); transform: scale(1); }
+  50%{ box-shadow: 0 0 0 12px rgba(217,119,6,0); transform: scale(1.08); }
+}
+
+.free-ready-banner{
+  margin: 18px 0 6px;
+  padding: 14px 16px;
+  border-radius: var(--radius-lg);
+  text-align: center;
+  font-weight: 800;
+  font-size: 15px;
+  color: #2a1404;
+  background: linear-gradient(135deg, var(--orange-1), var(--orange-2));
+  animation: banner-glow 1.6s ease-in-out infinite;
+}
+@keyframes banner-glow{
+  0%, 100%{ box-shadow: 0 0 0 0 rgba(217,119,6,0.5); }
+  50%{ box-shadow: 0 0 0 10px rgba(217,119,6,0); }
+}
 
 .stat-grid{
   display:grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 22px 0;
