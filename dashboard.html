@@ -28,12 +28,15 @@
       <div class="progress-outer mt-24">
         <div class="progress-inner" id="progress-bar" style="width:0%;"></div>
       </div>
-      <div class="progress-caption">
-        <span id="progress-text"></span>
-        <span id="progress-frac"></span>
+
+      <div class="drink-counter-big">
+        <div class="num"><span id="counter-current">0</span><span class="of" id="counter-of"> / ۷</span></div>
+        <div class="label" id="counter-label"></div>
       </div>
 
-      <div class="cup-row" id="cup-row"></div>
+      <div class="cup-row big" id="cup-row"></div>
+
+      <div class="free-ready-banner hidden" id="ready-banner">🎉 تبریک! نوشیدنی بعدی‌تون رایگانه — به باریستا نشون بدید</div>
 
       <div class="stat-grid">
         <div class="stat-box">
@@ -131,24 +134,28 @@
 
       const pct = Math.min(100, Math.round((customer.drink_count / DRINKS_FOR_FREE) * 100));
       document.getElementById("progress-bar").style.width = pct + "%";
-      document.getElementById("progress-frac").textContent = `${customer.drink_count} / ${DRINKS_FOR_FREE}`;
+
+      document.getElementById("counter-current").textContent = customer.drink_count;
+      document.getElementById("counter-of").textContent = ` / ${DRINKS_FOR_FREE}`;
 
       const remaining = Math.max(0, DRINKS_FOR_FREE - customer.drink_count);
-      document.getElementById("progress-text").textContent =
-        remaining === 0 ? "🎉 نوشیدنی بعدی رایگانه!" : `${remaining} نوشیدنی تا رایگان`;
+      document.getElementById("counter-label").textContent =
+        remaining === 0 ? "آماده‌ی دریافت نوشیدنی رایگان! 🎉" : `${remaining} نوشیدنی مونده تا رایگان`;
 
       const cupRow = document.getElementById("cup-row");
       cupRow.innerHTML = "";
       for (let i = 0; i < DRINKS_FOR_FREE; i++) {
         const cup = document.createElement("div");
         cup.className = "cup" + (i < customer.drink_count ? " filled" : "");
-        cup.textContent = "☕";
+        cup.textContent = i < customer.drink_count ? "☕" : "☕";
         cupRow.appendChild(cup);
       }
       const freeCup = document.createElement("div");
-      freeCup.className = "cup free";
+      freeCup.className = "cup free" + (remaining === 0 ? " ready" : "");
       freeCup.textContent = "🎁";
       cupRow.appendChild(freeCup);
+
+      document.getElementById("ready-banner").classList.toggle("hidden", remaining !== 0);
 
       document.getElementById("stat-total").textContent = customer.total_drinks || 0;
       document.getElementById("stat-free").textContent = customer.free_drinks_redeemed || 0;
