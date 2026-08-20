@@ -15,6 +15,7 @@
           <div class="brand-eyebrow">HAYK — پنل مدیریت</div>
         </div>
         <div class="btn-row">
+          <a href="stats-admin.html" class="btn btn-outline btn-sm">📊 آمار و تحلیل</a>
           <a href="menu-admin.html" class="btn btn-outline btn-sm">📖 مدیریت منو</a>
           <a href="bg-admin.html" class="btn btn-outline btn-sm">🖼️ پس‌زمینه</a>
           <button class="btn btn-outline btn-sm" id="settings-btn">⚙️ تنظیمات</button>
@@ -38,7 +39,7 @@
               <th>پیشرفت</th>
               <th>کل نوشیدنی</th>
               <th>رایگان دریافتی</th>
-              <th>جایزه چرخ شانس</th>
+              <th>حضور پیوسته</th>
               <th>تاریخ عضویت</th>
               <th>عملیات</th>
             </tr>
@@ -139,14 +140,7 @@
           <td data-label="پیشرفت"><span class="badge ${ready ? "ready" : ""}">${c.drink_count} / ${DRINKS_FOR_FREE}${ready ? " 🎁" : ""}</span></td>
           <td data-label="کل نوشیدنی">${c.total_drinks || 0}</td>
           <td data-label="رایگان دریافتی">${c.free_drinks_redeemed || 0}</td>
-          <td data-label="جایزه چرخ شانس">
-            ${c.unclaimed_prize
-              ? `<span class="badge">${escapeHtml(c.unclaimed_prize)}</span> <button class="icon-btn" title="تحویل داده شد" data-act="claim" data-id="${c.id}">✔</button>`
-              : c.pending_spin
-                ? `<span class="badge ready">⏳ چرخ آماده</span>`
-                : `<span class="muted small">—</span>`
-            }
-          </td>
+          <td data-label="حضور پیوسته">${c.visit_streak >= 2 ? `🔥 ${c.visit_streak}` : "—"}</td>
           <td data-label="عضویت">${fmtDate(c.created_at)}</td>
           <td data-label="عملیات">
             <button class="icon-btn" title="کم کردن نوشیدنی" data-act="minus" data-id="${c.id}">−</button>
@@ -175,14 +169,6 @@
 
       if (act === "plus" || act === "minus") {
         await quickAdjust(customer, act === "plus" ? 1 : -1);
-      } else if (act === "claim") {
-        const { error } = await supabaseClient
-          .from("customers")
-          .update({ unclaimed_prize: null })
-          .eq("id", id);
-        if (error) { showToast("خطا در ثبت", true); return; }
-        showToast("جایزه تحویل‌داده‌شده ثبت شد ✅");
-        loadCustomers();
       } else if (act === "edit") {
         openEdit(customer);
       } else if (act === "delete") {
@@ -195,9 +181,21 @@
       }
     });
 
+    function computeStreak(lastVisitDate, currentStreak) {
+      const today = new Date();
+      const todayStr = today.toISOString().slice(0, 10);
+      if (lastVisitDate === todayStr) {
+        return { last_visit_date: lastVisitDate, visit_streak: currentStreak || 0 };
+      }
+      const yesterday = new Date(today);
+      yesterday.setDate(yesterday.getDate() - 1);
+      const yesterdayStr = yesterday.toISOString().slice(0, 10);
+      const newStreak = lastVisitDate === yesterdayStr ? (currentStreak || 0) + 1 : 1;
+      return { last_visit_date: todayStr, visit_streak: newStreak };
+    }
+
     async function quickAdjust(customer, delta) {
-      let { drink_count, total_drinks, free_drinks_redeemed, pending_spin } = customer;
-      let wonSpin = false;
+      let { drink_count, total_drinks, free_drinks_redeemed, last_visit_date, visit_streak } = customer;
       if (delta > 0) {
         if (drink_count >= DRINKS_FOR_FREE) {
           free_drinks_redeemed = (free_drinks_redeemed || 0) + 1;
@@ -206,10 +204,9 @@
           drink_count += 1;
         }
         total_drinks = (total_drinks || 0) + 1;
-        if (!pending_spin && Math.random() < SPIN_CHANCE) {
-          pending_spin = true;
-          wonSpin = true;
-        }
+        const streakUpdate = computeStreak(last_visit_date, visit_streak);
+        last_visit_date = streakUpdate.last_visit_date;
+        visit_streak = streakUpdate.visit_streak;
       } else {
         if (drink_count > 0) {
           drink_count -= 1;
@@ -222,10 +219,12 @@
       }
       const { error } = await supabaseClient
         .from("customers")
-        .update({ drink_count, total_drinks, free_drinks_redeemed, pending_spin })
+        .update({ drink_count, total_drinks, free_drinks_redeemed, last_visit_date, visit_streak })
         .eq("id", customer.id);
       if (error) { showToast("خطا در بروزرسانی", true); return; }
-      if (wonSpin) showToast("🎰 برای این مشتری چرخ شانس باز شد");
+      if (delta > 0) {
+        supabaseClient.from("visit_log").insert({ customer_id: customer.id }).then(() => {});
+      }
       loadCustomers();
     }
 
