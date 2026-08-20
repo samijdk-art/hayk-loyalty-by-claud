@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>آمار و تحلیل — HAYK</title>
+<link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+
+  <main class="page page-wide">
+    <div class="card">
+      <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:14px; margin-bottom:8px;">
+        <div class="brand-top" style="align-items:flex-start; margin-bottom:0;">
+          <div class="brand-eyebrow">HAYK — آمار و تحلیل</div>
+        </div>
+        <a href="admin.html" class="btn btn-outline btn-sm">→ بازگشت به پنل مشتری‌ها</a>
+      </div>
+
+      <div id="loading-msg" class="center muted mt-24"><span class="loading-dot"></span>در حال محاسبه‌ی آمار…</div>
+
+      <div id="stats-content" class="hidden">
+        <div id="summary-row" class="stat-grid" style="grid-template-columns: repeat(4,1fr);"></div>
+
+        <div class="section-title">پرمشغول‌ترین روزهای هفته (۹۰ روز اخیر)</div>
+        <div class="bar-chart" id="weekday-chart"></div>
+
+        <div class="divider-line"></div>
+
+        <div class="section-title">روند ۱۴ روز اخیر</div>
+        <div class="bar-chart" id="trend-chart"></div>
+
+        <div class="divider-line"></div>
+
+        <div class="section-title">پرمصرف‌ترین مشتری‌ها</div>
+        <div id="top-customers"></div>
+      </div>
+    </div>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/config.js"></script>
+  <script src="js/app.js"></script>
+  <script>
+    if (sessionStorage.getItem("hayk_admin_auth") !== "1") {
+      window.location.href = "staff-admin.html";
+    }
+
+    function escapeHtml(str) {
+      const d = document.createElement("div");
+      d.textContent = str ?? "";
+      return d.innerHTML;
+    }
+
+    async function loadStats() {
+      try {
+        const ninetyDaysAgo = new Date();
+        ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+
+        const [customersRes, visitTotalRes, visitLogRes] = await Promise.all([
+          supabaseClient.from("customers").select("id,name,phone,total_drinks,visit_streak"),
+          supabaseClient.from("visit_log").select("id", { count: "exact", head: true }),
+          supabaseClient
+            .from("visit_log")
+            .select("created_at")
+            .gte("created_at", ninetyDaysAgo.toISOString())
+            .order("created_at", { ascending: true }),
+        ]);
+
+        if (customersRes.error) throw customersRes.error;
+        if (visitLogRes.error) throw visitLogRes.error;
+
+        const customers = customersRes.data || [];
+        const totalVisitsAllTime = visitTotalRes.count || 0;
+        const visits = visitLogRes.data || [];
+
+        renderSummary(customers, totalVisitsAllTime, visits);
+        renderWeekdayChart(visits);
+        renderTrendChart(visits);
+        renderTopCustomers(customers);
+
+        document.getElementById("loading-msg").classList.add("hidden");
+        document.getElementById("stats-content").classList.remove("hidden");
+      } catch (err) {
+        console.error(err);
+        document.getElementById("loading-msg").textContent = "خطا در بارگذاری آمار.";
+      }
+    }
+
+    function renderSummary(customers, totalVisitsAllTime, visits) {
+      const now = new Date();
+      const weekAgo = new Date(now);
+      weekAgo.setDate(weekAgo.getDate() - 7);
+      const visitsThisWeek = visits.filter((v) => new Date(v.created_at) >= weekAgo).length;
+      const avgPerCustomer = customers.length ? (totalVisitsAllTime / customers.length).toFixed(1) : "0";
+
+      document.getElementById("summary-row").innerHTML = `
+        <div class="stat-box"><div class="num">${customers.length}</div><div class="cap">کل مشتری‌ها</div></div>
+        <div class="stat-box"><div class="num">${totalVisitsAllTime}</div><div class="cap">کل ویزیت‌های ثبت‌شده</div></div>
+        <div class="stat-box"><div class="num">${visitsThisWeek}</div><div class="cap">ویزیت این هفته</div></div>
+        <div class="stat-box"><div class="num">${avgPerCustomer}</div><div class="cap">میانگین ویزیت هر مشتری</div></div>
+      `;
+    }
+
+    function renderWeekdayChart(visits) {
+      // JS getDay(): 0=Sunday..6=Saturday. Persian week order: Sat, Sun, Mon, Tue, Wed, Thu, Fri
+      const counts = [0, 0, 0, 0, 0, 0, 0];
+      visits.forEach((v) => {
+        const day = new Date(v.created_at).getDay();
+        counts[day]++;
+      });
+      const order = [6, 0, 1, 2, 3, 4, 5];
+      const labels = ["شنبه", "یکشنبه", "دوشنبه", "سه‌شنبه", "چهارشنبه", "پنجشنبه", "جمعه"];
+      const ordered = order.map((i) => counts[i]);
+      const max = Math.max(1, ...ordered);
+
+      const chart = document.getElementById("weekday-chart");
+      chart.innerHTML = "";
+      ordered.forEach((count, i) => {
+        const col = document.createElement("div");
+        col.className = "bar-col";
+        const heightPct = Math.round((count / max) * 100);
+        col.innerHTML = `
+          <div class="bar-value">${count}</div>
+          <div class="bar" style="height:${heightPct}%;"></div>
+          <div class="bar-label">${labels[i]}</div>
+        `;
+        chart.appendChild(col);
+      });
+    }
+
+    function renderTrendChart(visits) {
+      const days = [];
+      for (let i = 13; i >= 0; i--) {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        days.push(d);
+      }
+      const counts = days.map((d) => {
+        const dayStr = d.toISOString().slice(0, 10);
+        return visits.filter((v) => v.created_at.slice(0, 10) === dayStr).length;
+      });
+      const max = Math.max(1, ...counts);
+
+      const chart = document.getElementById("trend-chart");
+      chart.innerHTML = "";
+      days.forEach((d, i) => {
+        const col = document.createElement("div");
+        col.className = "bar-col";
+        const heightPct = Math.round((counts[i] / max) * 100);
+        const label = d.toLocaleDateString("fa-IR", { day: "numeric", month: "numeric" });
+        col.innerHTML = `
+          <div class="bar-value">${counts[i]}</div>
+          <div class="bar" style="height:${heightPct}%;"></div>
+          <div class="bar-label">${label}</div>
+        `;
+        chart.appendChild(col);
+      });
+    }
+
+    function renderTopCustomers(customers) {
+      const top = [...customers]
+        .sort((a, b) => (b.total_drinks || 0) - (a.total_drinks || 0))
+        .slice(0, 8);
+
+      const wrap = document.getElementById("top-customers");
+      if (top.length === 0) {
+        wrap.innerHTML = `<p class="center muted small">هنوز داده‌ای نیست.</p>`;
+        return;
+      }
+      wrap.innerHTML = top
+        .map(
+          (c, i) => `
+        <div class="top-customer-row">
+          <div class="top-customer-rank">${i + 1}</div>
+          <div class="top-customer-info">
+            <div class="top-customer-name">${escapeHtml(c.name)}</div>
+            <div class="top-customer-phone">${escapeHtml(c.phone)}</div>
+          </div>
+          <div class="top-customer-count">${c.total_drinks || 0} نوشیدنی</div>
+        </div>
+      `
+        )
+        .join("");
+    }
+
+    loadStats();
+  </script>
+</body>
+</html>
