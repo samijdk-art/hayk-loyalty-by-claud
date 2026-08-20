@@ -25,6 +25,10 @@
       <h1 class="page-title" style="font-size:26px;" id="cust-name"></h1>
       <p class="center muted small" id="cust-phone"></p>
 
+      <div class="streak-badge-wrap">
+        <div class="streak-badge hidden" id="streak-badge">🔥 <span id="streak-num"></span> روز متوالی</div>
+      </div>
+
       <div class="progress-outer mt-24">
         <div class="progress-inner" id="progress-bar" style="width:0%;"></div>
       </div>
@@ -53,23 +57,6 @@
       <div class="qr-wrap" id="qrcode"></div>
       <p class="center small muted">این کد رو موقع سفارش به باریستا نشون بدید</p>
 
-      <!-- Unclaimed prize banner -->
-      <div class="prize-banner hidden" id="prize-banner">
-        <div class="prize-label" id="prize-label"></div>
-        <div class="prize-hint">این پیام رو به باریستا نشون بدید تا جایزه‌تون رو بگیرید</div>
-      </div>
-
-      <!-- Wheel of fortune -->
-      <div class="wheel-card hidden" id="wheel-card">
-        <div class="title">🎰 یک چرخ شانس براتون باز شده!</div>
-        <div class="wheel-pointer"></div>
-        <div class="wheel" id="wheel">
-          <div class="wheel-center-dot"></div>
-        </div>
-        <button class="btn btn-primary btn-sm mt-16" id="spin-btn">بچرخون</button>
-        <div class="wheel-result" id="wheel-result"></div>
-      </div>
-
       <!-- Staff-only add drink box -->
       <div class="staff-box" id="staff-box">
         <div class="title">🔒 دسترسی کارکنان</div>
@@ -86,7 +73,6 @@
             <button class="btn btn-dark btn-sm" id="minus-btn" style="flex:1;">− ۱ نوشیدنی</button>
             <button class="btn btn-primary btn-sm" id="plus-btn" style="flex:2;">+ ۱ نوشیدنی</button>
           </div>
-          <button class="btn btn-outline btn-sm btn-block mt-16 hidden" id="claim-prize-btn">✅ جایزه رو تحویل دادم</button>
         </div>
       </div>
     </div>
@@ -132,6 +118,14 @@
       document.getElementById("cust-name").textContent = customer.name;
       document.getElementById("cust-phone").textContent = customer.phone;
 
+      const streakBadge = document.getElementById("streak-badge");
+      if ((customer.visit_streak || 0) >= 2) {
+        document.getElementById("streak-num").textContent = customer.visit_streak;
+        streakBadge.classList.remove("hidden");
+      } else {
+        streakBadge.classList.add("hidden");
+      }
+
       const pct = Math.min(100, Math.round((customer.drink_count / DRINKS_FOR_FREE) * 100));
       document.getElementById("progress-bar").style.width = pct + "%";
 
@@ -147,7 +141,7 @@
       for (let i = 0; i < DRINKS_FOR_FREE; i++) {
         const cup = document.createElement("div");
         cup.className = "cup" + (i < customer.drink_count ? " filled" : "");
-        cup.textContent = i < customer.drink_count ? "☕" : "☕";
+        cup.textContent = "☕";
         cupRow.appendChild(cup);
       }
       const freeCup = document.createElement("div");
@@ -169,98 +163,6 @@
         colorLight: "#ffffff",
         correctLevel: QRCode.CorrectLevel.M,
       });
-
-      const prizeBanner = document.getElementById("prize-banner");
-      if (customer.unclaimed_prize) {
-        document.getElementById("prize-label").textContent = customer.unclaimed_prize;
-        prizeBanner.classList.remove("hidden");
-        document.getElementById("claim-prize-btn").classList.remove("hidden");
-      } else {
-        prizeBanner.classList.add("hidden");
-        document.getElementById("claim-prize-btn").classList.add("hidden");
-      }
-
-      const wheelCard = document.getElementById("wheel-card");
-      if (customer.pending_spin) {
-        wheelCard.classList.remove("hidden");
-        resetWheelVisual();
-      } else {
-        wheelCard.classList.add("hidden");
-      }
-    }
-
-    // ---- spin wheel ----
-    function buildWheelBackground() {
-      const n = SPIN_PRIZES.length;
-      const seg = 360 / n;
-      const palette = ["#f5b04a", "#8a5a1f", "#d97706", "#a5711f", "#e8b563", "#6b4415", "#c9902f", "#5a3a12", "#f0a020", "#7a4d1a"];
-      const stops = [];
-      for (let i = 0; i < n; i++) {
-        const color = palette[i % palette.length];
-        stops.push(`${color} ${i * seg}deg ${(i + 1) * seg}deg`);
-      }
-      return `conic-gradient(from 0deg, ${stops.join(", ")})`;
-    }
-
-    function resetWheelVisual() {
-      const wheel = document.getElementById("wheel");
-      wheel.style.background = buildWheelBackground();
-      wheel.style.transition = "none";
-      wheel.style.transform = "rotate(0deg)";
-      document.getElementById("wheel-result").textContent = "";
-      document.getElementById("spin-btn").disabled = false;
-      // re-enable the transition on the next frame
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          wheel.style.transition = "transform 3.2s cubic-bezier(0.15,0.65,0.25,1)";
-        });
-      });
-    }
-
-    function pickPrizeIndex() {
-      const totalWeight = SPIN_PRIZES.reduce((s, p) => s + p.weight, 0);
-      let r = Math.random() * totalWeight;
-      for (let i = 0; i < SPIN_PRIZES.length; i++) {
-        r -= SPIN_PRIZES[i].weight;
-        if (r <= 0) return i;
-      }
-      return SPIN_PRIZES.length - 1;
-    }
-
-    document.getElementById("spin-btn").addEventListener("click", () => {
-      const btn = document.getElementById("spin-btn");
-      btn.disabled = true;
-      const idx = pickPrizeIndex();
-      const seg = 360 / SPIN_PRIZES.length;
-      const segCenter = idx * seg + seg / 2;
-      const finalRotation = 5 * 360 + (360 - segCenter);
-      document.getElementById("wheel").style.transform = `rotate(${finalRotation}deg)`;
-      setTimeout(() => applySpinResult(idx), 3300);
-    });
-
-    async function applySpinResult(idx) {
-      const prize = SPIN_PRIZES[idx];
-      const updates = { pending_spin: false };
-
-      if (prize.effect === "prize") {
-        updates.unclaimed_prize = prize.label;
-      }
-
-      try {
-        const { data, error } = await supabaseClient
-          .from("customers")
-          .update(updates)
-          .eq("id", customer.id)
-          .select()
-          .single();
-        if (error) throw error;
-        customer = data;
-        document.getElementById("wheel-result").textContent = prize.label;
-        setTimeout(() => render(), 1400);
-      } catch (err) {
-        console.error(err);
-        document.getElementById("wheel-result").textContent = "خطا در ثبت نتیجه";
-      }
     }
 
     // ---- staff unlock ----
@@ -284,10 +186,23 @@
       }
     });
 
+    function computeStreak(lastVisitDate, currentStreak) {
+      const today = new Date();
+      const todayStr = today.toISOString().slice(0, 10);
+      if (lastVisitDate === todayStr) {
+        // already counted today — no change
+        return { last_visit_date: lastVisitDate, visit_streak: currentStreak || 0 };
+      }
+      const yesterday = new Date(today);
+      yesterday.setDate(yesterday.getDate() - 1);
+      const yesterdayStr = yesterday.toISOString().slice(0, 10);
+      const newStreak = lastVisitDate === yesterdayStr ? (currentStreak || 0) + 1 : 1;
+      return { last_visit_date: todayStr, visit_streak: newStreak };
+    }
+
     async function adjustDrink(delta) {
       if (!customer) return;
-      let { drink_count, total_drinks, free_drinks_redeemed, pending_spin } = customer;
-      let wonSpin = false;
+      let { drink_count, total_drinks, free_drinks_redeemed, last_visit_date, visit_streak } = customer;
 
       if (delta > 0) {
         if (drink_count >= DRINKS_FOR_FREE) {
@@ -298,10 +213,9 @@
         }
         total_drinks = (total_drinks || 0) + 1;
 
-        if (!pending_spin && Math.random() < SPIN_CHANCE) {
-          pending_spin = true;
-          wonSpin = true;
-        }
+        const streakUpdate = computeStreak(last_visit_date, visit_streak);
+        last_visit_date = streakUpdate.last_visit_date;
+        visit_streak = streakUpdate.visit_streak;
       } else {
         if (drink_count > 0) {
           drink_count -= 1;
@@ -317,18 +231,20 @@
       try {
         const { data, error } = await supabaseClient
           .from("customers")
-          .update({ drink_count, total_drinks, free_drinks_redeemed, pending_spin })
+          .update({ drink_count, total_drinks, free_drinks_redeemed, last_visit_date, visit_streak })
           .eq("id", customer.id)
           .select()
           .single();
         if (error) throw error;
         customer = data;
-        render();
-        if (wonSpin) {
-          showToast("🎰 تبریک! یک چرخ شانس باز شد");
-        } else {
-          showToast(delta > 0 ? "یک نوشیدنی اضافه شد ☕" : "اصلاح شد");
+
+        if (delta > 0) {
+          // fire-and-forget visit log entry for the stats dashboard
+          supabaseClient.from("visit_log").insert({ customer_id: customer.id }).then(() => {});
         }
+
+        render();
+        showToast(delta > 0 ? "یک نوشیدنی اضافه شد ☕" : "اصلاح شد");
       } catch (err) {
         console.error(err);
         showToast("مشکلی پیش اومد", true);
@@ -337,25 +253,6 @@
 
     document.getElementById("plus-btn").addEventListener("click", () => adjustDrink(1));
     document.getElementById("minus-btn").addEventListener("click", () => adjustDrink(-1));
-
-    document.getElementById("claim-prize-btn").addEventListener("click", async () => {
-      if (!customer) return;
-      try {
-        const { data, error } = await supabaseClient
-          .from("customers")
-          .update({ unclaimed_prize: null })
-          .eq("id", customer.id)
-          .select()
-          .single();
-        if (error) throw error;
-        customer = data;
-        render();
-        showToast("جایزه تحویل‌داده‌شده ثبت شد ✅");
-      } catch (err) {
-        console.error(err);
-        showToast("مشکلی پیش اومد", true);
-      }
-    });
 
     load();
   </script>
