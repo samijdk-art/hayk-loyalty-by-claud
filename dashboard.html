@@ -53,9 +53,20 @@
         </div>
       </div>
 
+      <div class="wallet-box">
+        <div class="wallet-label">💰 کیف پول شما</div>
+        <div class="wallet-amount" id="wallet-amount">۰ تومان</div>
+      </div>
+
       <div class="section-title">کد وفاداری شما</div>
       <div class="qr-wrap" id="qrcode"></div>
       <p class="center small muted">این کد رو موقع سفارش به باریستا نشون بدید</p>
+
+      <div class="referral-box">
+        <div class="referral-title">🎁 دوستاتون رو دعوت کنید</div>
+        <p class="small muted" style="margin-bottom:12px;">با هر دوستی که با لینک شما عضو بشه، هر دوتون یه هدیه‌ی نقدی به کیف پولتون می‌گیرید.</p>
+        <button class="btn btn-outline btn-sm btn-block" id="copy-referral-btn">📋 کپی لینک دعوت</button>
+      </div>
 
       <!-- Staff-only add drink box -->
       <div class="staff-box" id="staff-box">
@@ -73,6 +84,23 @@
             <button class="btn btn-dark btn-sm" id="minus-btn" style="flex:1;">− ۱ نوشیدنی</button>
             <button class="btn btn-primary btn-sm" id="plus-btn" style="flex:2;">+ ۱ نوشیدنی</button>
           </div>
+
+          <div class="divider-line"></div>
+
+          <div class="title" style="margin-bottom:10px;">💰 شارژ کیف پول مشتری</div>
+          <div class="field" style="margin-bottom:8px;">
+            <input type="number" id="topup-amount" placeholder="مبلغی که مشتری پرداخت کرده (تومان)" min="0" />
+          </div>
+          <p class="small muted" id="topup-preview" style="margin-bottom:10px;"></p>
+          <button class="btn btn-primary btn-sm btn-block" id="topup-btn">شارژ کن</button>
+
+          <div class="divider-line"></div>
+
+          <div class="title" style="margin-bottom:10px;">🧾 کسر از کیف پول (پرداخت خرید با کیف پول)</div>
+          <div class="field" style="margin-bottom:8px;">
+            <input type="number" id="deduct-amount" placeholder="مبلغ خریدی که با کیف پول پرداخت شد" min="0" />
+          </div>
+          <button class="btn btn-outline btn-sm btn-block" id="deduct-btn">کسر کن</button>
         </div>
       </div>
     </div>
@@ -153,6 +181,7 @@
 
       document.getElementById("stat-total").textContent = customer.total_drinks || 0;
       document.getElementById("stat-free").textContent = customer.free_drinks_redeemed || 0;
+      document.getElementById("wallet-amount").textContent = formatToman(customer.wallet_balance || 0);
 
       document.getElementById("qrcode").innerHTML = "";
       new QRCode(document.getElementById("qrcode"), {
@@ -253,6 +282,105 @@
 
     document.getElementById("plus-btn").addEventListener("click", () => adjustDrink(1));
     document.getElementById("minus-btn").addEventListener("click", () => adjustDrink(-1));
+
+    document.getElementById("copy-referral-btn").addEventListener("click", async () => {
+      const link = referralLinkForId(customer.id);
+      try {
+        await navigator.clipboard.writeText(link);
+      } catch {
+        const temp = document.createElement("textarea");
+        temp.value = link;
+        document.body.appendChild(temp);
+        temp.select();
+        document.execCommand("copy");
+        document.body.removeChild(temp);
+      }
+      showToast("لینک دعوت کپی شد ✅");
+    });
+
+    document.getElementById("topup-amount").addEventListener("input", (e) => {
+      const amount = parseInt(e.target.value, 10) || 0;
+      const preview = document.getElementById("topup-preview");
+      if (amount <= 0) {
+        preview.textContent = "";
+        return;
+      }
+      const { bonusPercent, bonusAmount, totalCredited } = computeWalletBonus(amount);
+      preview.textContent =
+        bonusPercent > 0
+          ? `بونوس ${bonusPercent}٪ = ${formatToman(bonusAmount)} → مجموع شارژ: ${formatToman(totalCredited)}`
+          : `بدون بونوس (کمتر از حد نصاب) → مجموع شارژ: ${formatToman(totalCredited)}`;
+    });
+
+    document.getElementById("topup-btn").addEventListener("click", async () => {
+      const btn = document.getElementById("topup-btn");
+      const amount = parseInt(document.getElementById("topup-amount").value, 10) || 0;
+      if (amount <= 0) {
+        showToast("مبلغ رو درست وارد کنید", true);
+        return;
+      }
+      const { bonusAmount, totalCredited } = computeWalletBonus(amount);
+      setBtnLoading(btn, true, "در حال ثبت…");
+      try {
+        const newBalance = (customer.wallet_balance || 0) + totalCredited;
+        const { data, error } = await supabaseClient
+          .from("customers")
+          .update({ wallet_balance: newBalance })
+          .eq("id", customer.id)
+          .select()
+          .single();
+        if (error) throw error;
+        customer = data;
+        await supabaseClient.from("wallet_topups").insert({
+          customer_id: customer.id,
+          amount_paid: amount,
+          bonus_amount: bonusAmount,
+          total_credited: totalCredited,
+        });
+        document.getElementById("topup-amount").value = "";
+        document.getElementById("topup-preview").textContent = "";
+        setBtnLoading(btn, false);
+        render();
+        showToast(`کیف پول شارژ شد: ${formatToman(totalCredited)} ✅`);
+      } catch (err) {
+        console.error(err);
+        setBtnLoading(btn, false);
+        showToast("خطا در شارژ کیف پول", true);
+      }
+    });
+
+    document.getElementById("deduct-btn").addEventListener("click", async () => {
+      const btn = document.getElementById("deduct-btn");
+      const amount = parseInt(document.getElementById("deduct-amount").value, 10) || 0;
+      if (amount <= 0) {
+        showToast("مبلغ رو درست وارد کنید", true);
+        return;
+      }
+      if (amount > (customer.wallet_balance || 0)) {
+        showToast("موجودی کیف پول کافی نیست", true);
+        return;
+      }
+      setBtnLoading(btn, true, "در حال ثبت…");
+      try {
+        const newBalance = (customer.wallet_balance || 0) - amount;
+        const { data, error } = await supabaseClient
+          .from("customers")
+          .update({ wallet_balance: newBalance })
+          .eq("id", customer.id)
+          .select()
+          .single();
+        if (error) throw error;
+        customer = data;
+        document.getElementById("deduct-amount").value = "";
+        setBtnLoading(btn, false);
+        render();
+        showToast(`${formatToman(amount)} از کیف پول کسر شد ✅`);
+      } catch (err) {
+        console.error(err);
+        setBtnLoading(btn, false);
+        showToast("خطا در کسر از کیف پول", true);
+      }
+    });
 
     load();
   </script>
