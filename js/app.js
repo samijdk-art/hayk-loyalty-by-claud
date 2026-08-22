@@ -117,3 +117,13 @@ function fmtDate(iso) {
     return iso;
   }
 }
+
+function formatToman(n) {
+  const num = Math.round(Number(n) || 0);
+  return num.toLocaleString("en-US") + " تومان";
+}
+
+function referralLinkForId(id) {
+  const base = window.location.origin + window.location.pathname.replace(/[^/]*$/, "");
+  return `${base}join.html?ref=${id}`;
+}
