@@ -46,6 +46,7 @@
     const form = document.getElementById("join-form");
     const msg = document.getElementById("msg");
     const submitBtn = document.getElementById("submit-btn");
+    const referrerId = new URLSearchParams(window.location.search).get("ref");
 
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
@@ -81,16 +82,42 @@
 
         const { data, error } = await supabaseClient
           .from("customers")
-          .insert({ name, phone, pin })
+          .insert({ name, phone, pin, referred_by: referrerId || null })
           .select()
           .single();
 
         if (error) throw error;
 
-        showFormMsg(msg, "خوش اومدید! در حال انتقال به کارت شما…", "success");
+        let successMsg = "خوش اومدید! در حال انتقال به کارت شما…";
+
+        if (referrerId) {
+          try {
+            const referrer = await fetchCustomerById(referrerId);
+            if (referrer) {
+              const bonusStr = await getSetting("referral_bonus_amount");
+              const bonus = parseInt(bonusStr, 10) || 0;
+              if (bonus > 0) {
+                await supabaseClient
+                  .from("customers")
+                  .update({ wallet_balance: (referrer.wallet_balance || 0) + bonus })
+                  .eq("id", referrer.id);
+                await supabaseClient
+                  .from("customers")
+                  .update({ wallet_balance: (data.wallet_balance || 0) + bonus })
+                  .eq("id", data.id);
+                successMsg = `خوش اومدید! چون با دعوت یه دوست عضو شدید، ${formatToman(bonus)} به کیف پولتون اضافه شد 🎁`;
+              }
+            }
+          } catch (refErr) {
+            console.error("referral bonus failed", refErr);
+            // signup itself still succeeded — don't block the user for this
+          }
+        }
+
+        showFormMsg(msg, successMsg, "success");
         setTimeout(() => {
           window.location.href = `dashboard.html?id=${data.id}`;
-        }, 900);
+        }, 1400);
       } catch (err) {
         console.error(err);
         showFormMsg(msg, "مشکلی پیش اومد، دوباره تلاش کنید.");
