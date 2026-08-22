@@ -48,3 +48,19 @@ const SPIN_PRIZES = [
   { label: "🎯 دفعه‌ی بعد شانست بیشتره", effect: "none", weight: 10 },
 ];
 const PIN_GRACE_DEADLINE = "2026-08-14T23:59:59";
+// Wallet top-up bonus tiers. When staff charges a customer's wallet,
+// the amount they actually paid is checked against these tiers
+// (highest min that the amount qualifies for wins) and a bonus
+// percentage is added on top, credited to their wallet balance.
+const WALLET_TOPUP_TIERS = [
+  { min: 1000000, bonusPercent: 15 },
+  { min: 500000, bonusPercent: 10 },
+  { min: 200000, bonusPercent: 5 },
+];
+
+function computeWalletBonus(amountPaid) {
+  const tier = WALLET_TOPUP_TIERS.find((t) => amountPaid >= t.min);
+  const bonusPercent = tier ? tier.bonusPercent : 0;
+  const bonusAmount = Math.round((amountPaid * bonusPercent) / 100);
+  return { bonusPercent, bonusAmount, totalCredited: amountPaid + bonusAmount };
+}
