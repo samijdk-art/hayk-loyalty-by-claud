@@ -54,8 +54,8 @@ const PIN_GRACE_DEADLINE = "2026-08-14T23:59:59";
 // percentage is added on top, credited to their wallet balance.
 const WALLET_TOPUP_TIERS = [
   { min: 1000000, bonusPercent: 15 },
-  { min: 500000, bonusPercent: 10 },
-  { min: 200000, bonusPercent: 5 },
+  { min: 750000, bonusPercent: 10 },
+  { min: 500000, bonusPercent: 5 },
 ];
 
 function computeWalletBonus(amountPaid) {
