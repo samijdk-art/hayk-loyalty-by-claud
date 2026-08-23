@@ -39,6 +39,7 @@
               <th>پیشرفت</th>
               <th>کل نوشیدنی</th>
               <th>رایگان دریافتی</th>
+              <th>کیف پول</th>
               <th>حضور پیوسته</th>
               <th>تاریخ عضویت</th>
               <th>عملیات</th>
@@ -62,6 +63,7 @@
       <div class="field"><label>تعداد نوشیدنی فعلی (از ۷)</label><input type="number" id="e-drinks" min="0" /></div>
       <div class="field"><label>کل نوشیدنی مصرف‌شده</label><input type="number" id="e-total" min="0" /></div>
       <div class="field"><label>تعداد نوشیدنی رایگان دریافتی</label><input type="number" id="e-free" min="0" /></div>
+      <div class="field"><label>موجودی کیف پول (تومان)</label><input type="number" id="e-wallet" min="0" /></div>
       <div class="btn-row mt-16">
         <button class="btn btn-dark" id="edit-cancel">انصراف</button>
         <button class="btn btn-primary" id="edit-save">ذخیره</button>
@@ -78,6 +80,11 @@
       <div class="divider-line"></div>
       <div class="field"><label>نام کاربری ادمین</label><input type="text" id="s-admin-user" /></div>
       <div class="field"><label>رمز عبور ادمین</label><input type="text" id="s-admin-pass" /></div>
+      <div class="divider-line"></div>
+      <div class="field"><label>شماره کارت (برای صفحه‌ی پرداخت کارت‌به‌کارت)</label><input type="text" id="s-card-number" placeholder="0000000000000000" /></div>
+      <div class="field"><label>نام صاحب حساب</label><input type="text" id="s-card-holder" placeholder="مثلاً سام جودکی" /></div>
+      <div class="divider-line"></div>
+      <div class="field"><label>مبلغ هدیه‌ی دعوت دوستان (تومان، هر دو طرف همینو می‌گیرن)</label><input type="number" id="s-referral-bonus" min="0" /></div>
       <div class="btn-row mt-16">
         <button class="btn btn-dark" id="settings-cancel">انصراف</button>
         <button class="btn btn-primary" id="settings-save">ذخیره تنظیمات</button>
@@ -140,6 +147,7 @@
           <td data-label="پیشرفت"><span class="badge ${ready ? "ready" : ""}">${c.drink_count} / ${DRINKS_FOR_FREE}${ready ? " 🎁" : ""}</span></td>
           <td data-label="کل نوشیدنی">${c.total_drinks || 0}</td>
           <td data-label="رایگان دریافتی">${c.free_drinks_redeemed || 0}</td>
+          <td data-label="کیف پول">${formatToman(c.wallet_balance || 0)}</td>
           <td data-label="حضور پیوسته">${c.visit_streak >= 2 ? `🔥 ${c.visit_streak}` : "—"}</td>
           <td data-label="عضویت">${fmtDate(c.created_at)}</td>
           <td data-label="عملیات">
@@ -240,6 +248,7 @@
       document.getElementById("e-drinks").value = c.drink_count;
       document.getElementById("e-total").value = c.total_drinks || 0;
       document.getElementById("e-free").value = c.free_drinks_redeemed || 0;
+      document.getElementById("e-wallet").value = c.wallet_balance || 0;
       hideFormMsg(document.getElementById("edit-msg"));
       editModal.classList.add("show");
     }
@@ -252,13 +261,14 @@
       const drink_count = parseInt(document.getElementById("e-drinks").value, 10) || 0;
       const total_drinks = parseInt(document.getElementById("e-total").value, 10) || 0;
       const free_drinks_redeemed = parseInt(document.getElementById("e-free").value, 10) || 0;
+      const wallet_balance = parseInt(document.getElementById("e-wallet").value, 10) || 0;
 
       if (!name || !phone) { showFormMsg(msg, "نام و موبایل نمی‌تونن خالی باشن."); return; }
       if (pinRaw && !/^\d{4}$/.test(pinRaw)) { showFormMsg(msg, "کد باید دقیقاً ۴ رقم باشه یا کاملاً خالی."); return; }
 
       const { error } = await supabaseClient
         .from("customers")
-        .update({ name, phone, pin: pinRaw || null, drink_count, total_drinks, free_drinks_redeemed })
+        .update({ name, phone, pin: pinRaw || null, drink_count, total_drinks, free_drinks_redeemed, wallet_balance })
         .eq("id", editingId);
       if (error) {
         showFormMsg(msg, error.message.includes("duplicate") ? "این شماره موبایل قبلاً ثبت شده." : "خطا در ذخیره‌سازی.");
@@ -273,14 +283,20 @@
     const settingsModal = document.getElementById("settings-modal");
     document.getElementById("settings-btn").addEventListener("click", async () => {
       hideFormMsg(document.getElementById("settings-msg"));
-      const [staffPass, adminUser, adminPass] = await Promise.all([
+      const [staffPass, adminUser, adminPass, cardNumber, cardHolder, referralBonus] = await Promise.all([
         getSetting("staff_password"),
         getSetting("admin_username"),
         getSetting("admin_password"),
+        getSetting("bank_card_number"),
+        getSetting("bank_card_holder"),
+        getSetting("referral_bonus_amount"),
       ]);
       document.getElementById("s-staff-pass").value = staffPass || "";
       document.getElementById("s-admin-user").value = adminUser || "";
       document.getElementById("s-admin-pass").value = adminPass || "";
+      document.getElementById("s-card-number").value = cardNumber || "";
+      document.getElementById("s-card-holder").value = cardHolder || "";
+      document.getElementById("s-referral-bonus").value = referralBonus || "20000";
       settingsModal.classList.add("show");
     });
     document.getElementById("settings-cancel").addEventListener("click", () => settingsModal.classList.remove("show"));
@@ -289,6 +305,9 @@
       const staffPass = document.getElementById("s-staff-pass").value.trim();
       const adminUser = document.getElementById("s-admin-user").value.trim();
       const adminPass = document.getElementById("s-admin-pass").value.trim();
+      const cardNumber = document.getElementById("s-card-number").value.trim();
+      const cardHolder = document.getElementById("s-card-holder").value.trim();
+      const referralBonus = document.getElementById("s-referral-bonus").value.trim();
       if (!staffPass || !adminUser || !adminPass) {
         showFormMsg(msg, "همه فیلدها الزامی هستن.");
         return;
@@ -298,6 +317,9 @@
           setSetting("staff_password", staffPass),
           setSetting("admin_username", adminUser),
           setSetting("admin_password", adminPass),
+          setSetting("bank_card_number", cardNumber),
+          setSetting("bank_card_holder", cardHolder),
+          setSetting("referral_bonus_amount", referralBonus || "0"),
         ]);
         settingsModal.classList.remove("show");
         showToast("تنظیمات ذخیره شد");
