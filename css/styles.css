@@ -559,6 +559,16 @@ tbody tr:hover{ background: rgba(255,255,255,0.015); }
 }
 .referral-title{ font-weight:700; font-size:14px; color: var(--gold); margin-bottom:8px; }
 
+/* ---------- announcement modal ---------- */
+.announce-feature{
+  display:flex; gap:10px; align-items:flex-start;
+  margin-bottom:16px;
+}
+.announce-feature .icon{ font-size:20px; flex-shrink:0; }
+.announce-feature .text{ font-size:13.5px; color:var(--text-lo); line-height:1.7; }
+.announce-feature .text b{ color:var(--text-hi); }
+.announce-feature .text ul{ list-style:none; }
+.announce-feature .text ul li{ padding: 2px 0; }
 /* ---------- misc ---------- */
 .center{ text-align:center; }
 .muted{ color: var(--text-lo); }
