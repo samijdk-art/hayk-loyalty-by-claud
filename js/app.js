@@ -127,3 +127,31 @@ function referralLinkForId(id) {
   const base = window.location.origin + window.location.pathname.replace(/[^/]*$/, "");
   return `${base}join.html?ref=${id}`;
 }
+
+function defaultWalletTiers() {
+  return [
+    { min: 1000000, bonusPercent: 15 },
+    { min: 500000, bonusPercent: 10 },
+    { min: 200000, bonusPercent: 5 },
+  ];
+}
+
+async function getWalletTiers() {
+  try {
+    const raw = await getSetting("wallet_topup_tiers");
+    if (!raw) return defaultWalletTiers();
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed) && parsed.length) return parsed;
+    return defaultWalletTiers();
+  } catch {
+    return defaultWalletTiers();
+  }
+}
+
+function computeWalletBonus(amountPaid, tiers) {
+  const sorted = [...(tiers || defaultWalletTiers())].sort((a, b) => b.min - a.min);
+  const tier = sorted.find((t) => amountPaid >= t.min);
+  const bonusPercent = tier ? tier.bonusPercent : 0;
+  const bonusAmount = Math.round((amountPaid * bonusPercent) / 100);
+  return { bonusPercent, bonusAmount, totalCredited: amountPaid + bonusAmount };
+}
