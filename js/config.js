@@ -64,3 +64,6 @@ function computeWalletBonus(amountPaid) {
   const bonusAmount = Math.round((amountPaid * bonusPercent) / 100);
   return { bonusPercent, bonusAmount, totalCredited: amountPaid + bonusAmount };
 }
+// Bump this number any time you want every customer to see the
+// "what's new" announcement modal again on their next visit.
+const CURRENT_ANNOUNCEMENT_VERSION = 1;
