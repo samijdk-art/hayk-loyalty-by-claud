@@ -419,6 +419,8 @@ tbody tr:hover{ background: rgba(255,255,255,0.015); }
 .modal-overlay.show{ display:flex; }
 .modal-box{
   width:100%; max-width: 420px;
+  max-height: 88vh;
+  overflow-y: auto;
   background: var(--card-bg); border:1px solid var(--card-border);
   border-radius: var(--radius-xl); padding: 30px 26px; box-shadow: var(--shadow-card);
 }
