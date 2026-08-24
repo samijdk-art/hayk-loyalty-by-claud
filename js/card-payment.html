@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>پرداخت کارت‌به‌کارت — HAYK</title>
+<link rel="stylesheet" href="css/styles.css" />
+<style>
+  .card-number-box{
+    background: rgba(255,255,255,0.03);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    padding: 22px;
+    text-align: center;
+    margin: 22px 0;
+  }
+  .card-number-digits{
+    font-family: 'Vazirmatn', monospace;
+    font-size: 26px;
+    font-weight: 800;
+    letter-spacing: 2px;
+    color: var(--gold);
+    direction: ltr;
+    unicode-bidi: plaintext;
+  }
+  .card-holder-name{
+    margin-top: 10px;
+    font-size: 14px;
+    color: var(--text-lo);
+  }
+</style>
+</head>
+<body>
+
+  <main class="page">
+    <a href="index.html" class="link-back">→ صفحه اصلی</a>
+    <div class="card">
+      <div class="brand-top">
+        <div class="gold-rule"></div>
+        <div class="brand-eyebrow">HAYK</div>
+      </div>
+      <h1 class="page-title" style="font-size:30px;">💳 شارژ کیف پول</h1>
+      <p class="page-sub">مبلغ رو به شماره کارت زیر واریز کنید تا پرسنل کیف پولتون رو شارژ کنه</p>
+
+      <div id="loading-msg" class="center muted"><span class="loading-dot"></span>در حال بارگذاری…</div>
+
+      <div class="hidden" id="content">
+        <div class="card-number-box">
+          <div class="card-number-digits" id="card-digits"></div>
+          <div class="card-holder-name" id="card-holder"></div>
+        </div>
+
+        <button class="btn btn-primary" id="copy-btn">📋 کپی شماره کارت</button>
+
+        <p class="center small muted mt-24">
+          بعد از واریز، رسید یا کد پیگیری تراکنش رو به باریستا نشون بدید تا کیف پولتون شارژ بشه (با بونوس!).
+        </p>
+      </div>
+    </div>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/config.js"></script>
+  <script src="js/app.js"></script>
+  <script>
+    let rawCardNumber = "";
+
+    function formatCard(num) {
+      return num.replace(/\D/g, "").replace(/(.{4})/g, "$1-").replace(/-$/, "");
+    }
+
+    async function load() {
+      try {
+        const [cardNumber, cardHolder] = await Promise.all([
+          getSetting("bank_card_number"),
+          getSetting("bank_card_holder"),
+        ]);
+        rawCardNumber = (cardNumber || "").replace(/\D/g, "");
+        document.getElementById("card-digits").textContent = formatCard(cardNumber || "");
+        document.getElementById("card-holder").textContent = cardHolder || "";
+        document.getElementById("loading-msg").classList.add("hidden");
+        document.getElementById("content").classList.remove("hidden");
+      } catch (err) {
+        console.error(err);
+        document.getElementById("loading-msg").textContent = "خطا در بارگذاری اطلاعات.";
+      }
+    }
+
+    document.getElementById("copy-btn").addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(rawCardNumber);
+        showToast("شماره کارت کپی شد ✅");
+      } catch (err) {
+        // fallback for older browsers / non-secure contexts
+        const temp = document.createElement("textarea");
+        temp.value = rawCardNumber;
+        document.body.appendChild(temp);
+        temp.select();
+        document.execCommand("copy");
+        document.body.removeChild(temp);
+        showToast("شماره کارت کپی شد ✅");
+      }
+    });
+
+    load();
+  </script>
+</body>
+</html>
