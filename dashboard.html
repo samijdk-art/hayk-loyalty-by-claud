@@ -64,7 +64,7 @@
 
       <div class="referral-box">
         <div class="referral-title">🎁 دوستاتون رو دعوت کنید</div>
-        <p class="small muted" style="margin-bottom:12px;">با هر دوستی که با لینک شما عضو بشه، هر دوتون یه هدیه‌ی نقدی به کیف پولتون می‌گیرید.</p>
+        <p class="small muted" style="margin-bottom:12px;">با هر دوستی که با لینک شما عضو بشه، هر دوتون یه هدیه‌ی نقدی می‌گیرید. اگه دوستتون توی اولین شارژش مبلغ کافی بذاره، هر دوتون یه هدیه‌ی دیگه هم می‌گیرید!</p>
         <button class="btn btn-outline btn-sm btn-block" id="copy-referral-btn">📋 کپی لینک دعوت</button>
       </div>
 
@@ -111,6 +111,15 @@
     </div>
   </main>
 
+  <!-- What's new announcement (must be dismissed before continuing) -->
+  <div class="modal-overlay" id="announce-modal">
+    <div class="modal-box" style="max-width:460px;">
+      <div class="modal-title">🎉 قابلیت‌های جدید اضافه شد!</div>
+      <div id="announce-body"></div>
+      <button class="btn btn-primary btn-block mt-16" id="announce-close-btn">متوجه شدم، بریم شارژ کنیم 💰</button>
+    </div>
+  </div>
+
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/davidshimjs-qrcodejs@0.0.2/qrcode.min.js"></script>
   <script src="js/config.js"></script>
@@ -120,13 +129,16 @@
     const custId = params.get("id");
     let customer = null;
     let staffPasswordCache = null;
+    let walletTiers = [];
 
     async function load() {
       if (!custId) return showNotFound();
       try {
         customer = await fetchCustomerById(custId);
         if (!customer) return showNotFound();
+        walletTiers = await getWalletTiers();
         render();
+        maybeShowAnnouncement();
       } catch (err) {
         console.error(err);
         showNotFound();
@@ -193,6 +205,62 @@
         correctLevel: QRCode.CorrectLevel.M,
       });
     }
+
+    async function maybeShowAnnouncement() {
+      if ((customer.announcement_seen_version || 0) >= CURRENT_ANNOUNCEMENT_VERSION) return;
+
+      try {
+        const [referralBonusStr, firstTopupThresholdStr, firstTopupBonusStr] = await Promise.all([
+          getSetting("referral_bonus_amount"),
+          getSetting("first_topup_bonus_threshold"),
+          getSetting("first_topup_referral_bonus"),
+        ]);
+        const referralBonus = parseInt(referralBonusStr, 10) || 0;
+        const firstTopupThreshold = parseInt(firstTopupThresholdStr, 10) || 0;
+        const firstTopupBonus = parseInt(firstTopupBonusStr, 10) || 0;
+
+        const tierLines = [...walletTiers]
+          .sort((a, b) => a.min - b.min)
+          .map((t) => `<li>${formatToman(t.min)} به بالا → <b>${t.bonusPercent}٪ بونوس</b></li>`)
+          .join("");
+
+        document.getElementById("announce-body").innerHTML = `
+          <div class="announce-feature">
+            <div class="icon">💰</div>
+            <div class="text">
+              <b>کیف پول فعال شد!</b><br/>
+              از این به بعد می‌تونید کیف پولتون رو شارژ کنید و به‌جای پرداخت کامل، از موجودیتون خرج کنید. هرچی بیشتر شارژ کنید، بونوس بیشتری می‌گیرید:
+              <ul style="margin:8px 0 0; padding-inline-start:18px;">${tierLines}</ul>
+            </div>
+          </div>
+          <div class="announce-feature">
+            <div class="icon">🎁</div>
+            <div class="text">
+              <b>سیستم دعوت دوستان فعال شد!</b><br/>
+              پایین همین صفحه یه لینک دعوت اختصاصی دارید. اگه یکی با لینک شما عضو بشه، هر دوی شما ${formatToman(referralBonus)} به کیف پولتون می‌گیرید.
+              ${firstTopupBonus > 0 ? `و اگه دوستتون توی اولین شارژش حداقل ${formatToman(firstTopupThreshold)} بذاره، هر دوتون یه ${formatToman(firstTopupBonus)} دیگه هم جایزه می‌گیرید! 🎉` : ""}
+            </div>
+          </div>
+        `;
+
+        document.getElementById("announce-modal").classList.add("show");
+      } catch (err) {
+        console.error("announcement failed to load", err);
+      }
+    }
+
+    document.getElementById("announce-close-btn").addEventListener("click", async () => {
+      document.getElementById("announce-modal").classList.remove("show");
+      try {
+        await supabaseClient
+          .from("customers")
+          .update({ announcement_seen_version: CURRENT_ANNOUNCEMENT_VERSION })
+          .eq("id", customer.id);
+        customer.announcement_seen_version = CURRENT_ANNOUNCEMENT_VERSION;
+      } catch (err) {
+        console.error(err);
+      }
+    });
 
     // ---- staff unlock ----
     document.getElementById("staff-unlock-btn").addEventListener("click", async () => {
@@ -305,7 +373,7 @@
         preview.textContent = "";
         return;
       }
-      const { bonusPercent, bonusAmount, totalCredited } = computeWalletBonus(amount);
+      const { bonusPercent, bonusAmount, totalCredited } = computeWalletBonus(amount, walletTiers);
       preview.textContent =
         bonusPercent > 0
           ? `بونوس ${bonusPercent}٪ = ${formatToman(bonusAmount)} → مجموع شارژ: ${formatToman(totalCredited)}`
@@ -319,9 +387,16 @@
         showToast("مبلغ رو درست وارد کنید", true);
         return;
       }
-      const { bonusAmount, totalCredited } = computeWalletBonus(amount);
+      const { bonusAmount, totalCredited } = computeWalletBonus(amount, walletTiers);
       setBtnLoading(btn, true, "در حال ثبت…");
       try {
+        // check BEFORE inserting whether this is the customer's first ever top-up
+        const { count } = await supabaseClient
+          .from("wallet_topups")
+          .select("id", { count: "exact", head: true })
+          .eq("customer_id", customer.id);
+        const isFirstTopup = (count || 0) === 0;
+
         const newBalance = (customer.wallet_balance || 0) + totalCredited;
         const { data, error } = await supabaseClient
           .from("customers")
@@ -331,17 +406,46 @@
           .single();
         if (error) throw error;
         customer = data;
+
         await supabaseClient.from("wallet_topups").insert({
           customer_id: customer.id,
           amount_paid: amount,
           bonus_amount: bonusAmount,
           total_credited: totalCredited,
         });
+
+        let extraMsg = "";
+        if (isFirstTopup && customer.referred_by) {
+          const [thresholdStr, bonusStr] = await Promise.all([
+            getSetting("first_topup_bonus_threshold"),
+            getSetting("first_topup_referral_bonus"),
+          ]);
+          const threshold = parseInt(thresholdStr, 10) || 0;
+          const referralTopupBonus = parseInt(bonusStr, 10) || 0;
+          if (amount >= threshold && referralTopupBonus > 0) {
+            const referrer = await fetchCustomerById(customer.referred_by);
+            if (referrer) {
+              await supabaseClient
+                .from("customers")
+                .update({ wallet_balance: (referrer.wallet_balance || 0) + referralTopupBonus })
+                .eq("id", referrer.id);
+              const { data: updatedSelf } = await supabaseClient
+                .from("customers")
+                .update({ wallet_balance: (customer.wallet_balance || 0) + referralTopupBonus })
+                .eq("id", customer.id)
+                .select()
+                .single();
+              if (updatedSelf) customer = updatedSelf;
+              extraMsg = ` + ${formatToman(referralTopupBonus)} جایزه‌ی اولین شارژ دعوت 🎁`;
+            }
+          }
+        }
+
         document.getElementById("topup-amount").value = "";
         document.getElementById("topup-preview").textContent = "";
         setBtnLoading(btn, false);
         render();
-        showToast(`کیف پول شارژ شد: ${formatToman(totalCredited)} ✅`);
+        showToast(`کیف پول شارژ شد: ${formatToman(totalCredited)}${extraMsg} ✅`);
       } catch (err) {
         console.error(err);
         setBtnLoading(btn, false);
