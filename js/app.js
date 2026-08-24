@@ -57,8 +57,7 @@ async function getSetting(key) {
 async function setSetting(key, value) {
   const { error } = await supabaseClient
     .from("app_settings")
-    .update({ value })
-    .eq("key", key);
+    .upsert({ key, value }, { onConflict: "key" });
   if (error) throw error;
 }
 
