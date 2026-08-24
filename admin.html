@@ -315,4 +315,81 @@
       document.getElementById("s-admin-user").value = adminUser || "";
       document.getElementById("s-admin-pass").value = adminPass || "";
       document.getElementById("s-card-number").value = cardNumber || "";
-      document.getElementById("s-card-holder")
+      document.getElementById("s-card-holder").value = cardHolder || "";
+      document.getElementById("s-referral-bonus").value = referralBonus || "20000";
+      document.getElementById("s-first-topup-threshold").value = firstTopupThreshold || "500000";
+      document.getElementById("s-first-topup-bonus").value = firstTopupBonus || "20000";
+
+      let tiers = defaultWalletTiers();
+      try {
+        const parsed = JSON.parse(tiersRaw || "");
+        if (Array.isArray(parsed) && parsed.length) tiers = parsed;
+      } catch {}
+      const sortedTiers = [...tiers].sort((a, b) => b.min - a.min);
+      document.getElementById("s-tier1-min").value = sortedTiers[0]?.min ?? "";
+      document.getElementById("s-tier1-percent").value = sortedTiers[0]?.bonusPercent ?? "";
+      document.getElementById("s-tier2-min").value = sortedTiers[1]?.min ?? "";
+      document.getElementById("s-tier2-percent").value = sortedTiers[1]?.bonusPercent ?? "";
+      document.getElementById("s-tier3-min").value = sortedTiers[2]?.min ?? "";
+      document.getElementById("s-tier3-percent").value = sortedTiers[2]?.bonusPercent ?? "";
+      settingsModal.classList.add("show");
+    });
+    document.getElementById("settings-cancel").addEventListener("click", () => settingsModal.classList.remove("show"));
+    document.getElementById("settings-save").addEventListener("click", async () => {
+      const msg = document.getElementById("settings-msg");
+      const staffPass = document.getElementById("s-staff-pass").value.trim();
+      const adminUser = document.getElementById("s-admin-user").value.trim();
+      const adminPass = document.getElementById("s-admin-pass").value.trim();
+      const cardNumber = document.getElementById("s-card-number").value.trim();
+      const cardHolder = document.getElementById("s-card-holder").value.trim();
+      const referralBonus = document.getElementById("s-referral-bonus").value.trim();
+      const firstTopupThreshold = document.getElementById("s-first-topup-threshold").value.trim();
+      const firstTopupBonus = document.getElementById("s-first-topup-bonus").value.trim();
+
+      const tiers = [
+        { min: parseInt(document.getElementById("s-tier1-min").value, 10) || 0, bonusPercent: parseInt(document.getElementById("s-tier1-percent").value, 10) || 0 },
+        { min: parseInt(document.getElementById("s-tier2-min").value, 10) || 0, bonusPercent: parseInt(document.getElementById("s-tier2-percent").value, 10) || 0 },
+        { min: parseInt(document.getElementById("s-tier3-min").value, 10) || 0, bonusPercent: parseInt(document.getElementById("s-tier3-percent").value, 10) || 0 },
+      ].filter((t) => t.min > 0);
+
+      if (!staffPass || !adminUser || !adminPass) {
+        showFormMsg(msg, "همه فیلدها الزامی هستن.");
+        return;
+      }
+      try {
+        await Promise.all([
+          setSetting("staff_password", staffPass),
+          setSetting("admin_username", adminUser),
+          setSetting("admin_password", adminPass),
+          setSetting("bank_card_number", cardNumber),
+          setSetting("bank_card_holder", cardHolder),
+          setSetting("referral_bonus_amount", referralBonus || "0"),
+          setSetting("wallet_topup_tiers", JSON.stringify(tiers)),
+          setSetting("first_topup_bonus_threshold", firstTopupThreshold || "0"),
+          setSetting("first_topup_referral_bonus", firstTopupBonus || "0"),
+        ]);
+        settingsModal.classList.remove("show");
+        showToast("تنظیمات ذخیره شد");
+      } catch (err) {
+        console.error(err);
+        showFormMsg(msg, "خطا در ذخیره‌سازی تنظیمات.");
+      }
+    });
+
+    // ---- search ----
+    document.getElementById("search").addEventListener("input", (e) => {
+      const q = e.target.value.trim().toLowerCase();
+      if (!q) { renderTable(allCustomers); return; }
+      renderTable(
+        allCustomers.filter(
+          (c) => c.name.toLowerCase().includes(q) || c.phone.includes(q)
+        )
+      );
+    });
+
+    document.getElementById("refresh-btn").addEventListener("click", loadCustomers);
+
+    loadCustomers();
+  </script>
+</body>
+</html>
