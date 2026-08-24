@@ -85,6 +85,23 @@
       <div class="field"><label>نام صاحب حساب</label><input type="text" id="s-card-holder" placeholder="مثلاً سام جودکی" /></div>
       <div class="divider-line"></div>
       <div class="field"><label>مبلغ هدیه‌ی دعوت دوستان (تومان، هر دو طرف همینو می‌گیرن)</label><input type="number" id="s-referral-bonus" min="0" /></div>
+      <div class="divider-line"></div>
+      <div class="field" style="margin-bottom:8px;"><label>پله‌های بونوس شارژ کیف پول</label></div>
+      <div class="btn-row" style="margin-bottom:10px;">
+        <div class="field" style="margin-bottom:0;"><input type="number" id="s-tier1-min" placeholder="حداقل مبلغ (پله ۱)" min="0" /></div>
+        <div class="field" style="margin-bottom:0; max-width:110px;"><input type="number" id="s-tier1-percent" placeholder="٪ بونوس" min="0" /></div>
+      </div>
+      <div class="btn-row" style="margin-bottom:10px;">
+        <div class="field" style="margin-bottom:0;"><input type="number" id="s-tier2-min" placeholder="حداقل مبلغ (پله ۲)" min="0" /></div>
+        <div class="field" style="margin-bottom:0; max-width:110px;"><input type="number" id="s-tier2-percent" placeholder="٪ بونوس" min="0" /></div>
+      </div>
+      <div class="btn-row" style="margin-bottom:0;">
+        <div class="field" style="margin-bottom:0;"><input type="number" id="s-tier3-min" placeholder="حداقل مبلغ (پله ۳)" min="0" /></div>
+        <div class="field" style="margin-bottom:0; max-width:110px;"><input type="number" id="s-tier3-percent" placeholder="٪ بونوس" min="0" /></div>
+      </div>
+      <div class="divider-line"></div>
+      <div class="field"><label>حداقل مبلغ اولین شارژ دعوت‌شونده برای بونوس ویژه (تومان)</label><input type="number" id="s-first-topup-threshold" min="0" /></div>
+      <div class="field"><label>مبلغ بونوس ویژه‌ی اولین شارژ (تومان، هر دو طرف می‌گیرن)</label><input type="number" id="s-first-topup-bonus" min="0" /></div>
       <div class="btn-row mt-16">
         <button class="btn btn-dark" id="settings-cancel">انصراف</button>
         <button class="btn btn-primary" id="settings-save">ذخیره تنظیمات</button>
@@ -283,66 +300,19 @@
     const settingsModal = document.getElementById("settings-modal");
     document.getElementById("settings-btn").addEventListener("click", async () => {
       hideFormMsg(document.getElementById("settings-msg"));
-      const [staffPass, adminUser, adminPass, cardNumber, cardHolder, referralBonus] = await Promise.all([
+      const [staffPass, adminUser, adminPass, cardNumber, cardHolder, referralBonus, tiersRaw, firstTopupThreshold, firstTopupBonus] = await Promise.all([
         getSetting("staff_password"),
         getSetting("admin_username"),
         getSetting("admin_password"),
         getSetting("bank_card_number"),
         getSetting("bank_card_holder"),
         getSetting("referral_bonus_amount"),
+        getSetting("wallet_topup_tiers"),
+        getSetting("first_topup_bonus_threshold"),
+        getSetting("first_topup_referral_bonus"),
       ]);
       document.getElementById("s-staff-pass").value = staffPass || "";
       document.getElementById("s-admin-user").value = adminUser || "";
       document.getElementById("s-admin-pass").value = adminPass || "";
       document.getElementById("s-card-number").value = cardNumber || "";
-      document.getElementById("s-card-holder").value = cardHolder || "";
-      document.getElementById("s-referral-bonus").value = referralBonus || "20000";
-      settingsModal.classList.add("show");
-    });
-    document.getElementById("settings-cancel").addEventListener("click", () => settingsModal.classList.remove("show"));
-    document.getElementById("settings-save").addEventListener("click", async () => {
-      const msg = document.getElementById("settings-msg");
-      const staffPass = document.getElementById("s-staff-pass").value.trim();
-      const adminUser = document.getElementById("s-admin-user").value.trim();
-      const adminPass = document.getElementById("s-admin-pass").value.trim();
-      const cardNumber = document.getElementById("s-card-number").value.trim();
-      const cardHolder = document.getElementById("s-card-holder").value.trim();
-      const referralBonus = document.getElementById("s-referral-bonus").value.trim();
-      if (!staffPass || !adminUser || !adminPass) {
-        showFormMsg(msg, "همه فیلدها الزامی هستن.");
-        return;
-      }
-      try {
-        await Promise.all([
-          setSetting("staff_password", staffPass),
-          setSetting("admin_username", adminUser),
-          setSetting("admin_password", adminPass),
-          setSetting("bank_card_number", cardNumber),
-          setSetting("bank_card_holder", cardHolder),
-          setSetting("referral_bonus_amount", referralBonus || "0"),
-        ]);
-        settingsModal.classList.remove("show");
-        showToast("تنظیمات ذخیره شد");
-      } catch (err) {
-        console.error(err);
-        showFormMsg(msg, "خطا در ذخیره‌سازی تنظیمات.");
-      }
-    });
-
-    // ---- search ----
-    document.getElementById("search").addEventListener("input", (e) => {
-      const q = e.target.value.trim().toLowerCase();
-      if (!q) { renderTable(allCustomers); return; }
-      renderTable(
-        allCustomers.filter(
-          (c) => c.name.toLowerCase().includes(q) || c.phone.includes(q)
-        )
-      );
-    });
-
-    document.getElementById("refresh-btn").addEventListener("click", loadCustomers);
-
-    loadCustomers();
-  </script>
-</body>
-</html>
+      document.getElementById("s-card-holder")
