@@ -154,3 +154,27 @@ function computeWalletBonus(amountPaid, tiers) {
   const bonusAmount = Math.round((amountPaid * bonusPercent) / 100);
   return { bonusPercent, bonusAmount, totalCredited: amountPaid + bonusAmount };
 }
+function defaultCustomerTiers() {
+  return [
+    { min: 0, name: "برنزی", icon: "🥉", color: "#c08552" },
+    { min: 50, name: "نقره‌ای", icon: "🥈", color: "#b8c0c8" },
+    { min: 150, name: "طلایی", icon: "🥇", color: "#d4a054" },
+  ];
+}
+
+async function getCustomerTiers() {
+  try {
+    const raw = await getSetting("customer_tiers");
+    if (!raw) return defaultCustomerTiers();
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed) && parsed.length) return parsed;
+    return defaultCustomerTiers();
+  } catch {
+    return defaultCustomerTiers();
+  }
+}
+
+function computeCustomerTier(totalDrinks, tiers) {
+  const sorted = [...(tiers || defaultCustomerTiers())].sort((a, b) => b.min - a.min);
+  return sorted.find((t) => (totalDrinks || 0) >= t.min) || sorted[sorted.length - 1];
+}
