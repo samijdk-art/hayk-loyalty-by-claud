@@ -506,6 +506,17 @@ tbody tr:hover{ background: rgba(255,255,255,0.015); }
 }
 .streak-badge-wrap{ text-align:center; }
 
+/* ---------- customer tier badge ---------- */
+.tier-badge-wrap{ text-align:center; }
+.tier-badge{
+  display:inline-flex; align-items:center; gap:6px;
+  font-weight: 700; font-size: 13px;
+  padding: 6px 14px; border-radius: 999px;
+  margin: 4px auto 0;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid currentColor;
+}
+
 /* ---------- stats dashboard ---------- */
 .bar-chart{
   display:flex; align-items:flex-end; gap:8px;
@@ -572,16 +583,6 @@ tbody tr:hover{ background: rgba(255,255,255,0.015); }
 .announce-feature .text ul{ list-style:none; }
 .announce-feature .text ul li{ padding: 2px 0; }
 
-/* ---------- customer tier badge ---------- */
-.tier-badge-wrap{ text-align:center; }
-.tier-badge{
-  display:inline-flex; align-items:center; gap:6px;
-  font-weight: 700; font-size: 13px;
-  padding: 6px 14px; border-radius: 999px;
-  margin: 4px auto 0;
-  background: rgba(255,255,255,0.05);
-  border: 1px solid currentColor;
-}
 /* ---------- misc ---------- */
 .center{ text-align:center; }
 .muted{ color: var(--text-lo); }
