@@ -24,9 +24,11 @@
       <div class="avatar-badge" id="avatar"></div>
       <h1 class="page-title" style="font-size:26px;" id="cust-name"></h1>
       <p class="center muted small" id="cust-phone"></p>
+
       <div class="tier-badge-wrap">
         <div class="tier-badge" id="tier-badge"></div>
       </div>
+
       <div class="streak-badge-wrap">
         <div class="streak-badge hidden" id="streak-badge">🔥 <span id="streak-num"></span> روز متوالی</div>
       </div>
@@ -131,8 +133,9 @@
     const custId = params.get("id");
     let customer = null;
     let staffPasswordCache = null;
-        let walletTiers = [];
+    let walletTiers = [];
     let customerTiers = [];
+
     async function load() {
       if (!custId) return showNotFound();
       try {
@@ -160,10 +163,12 @@
       document.getElementById("avatar").textContent = initials(customer.name);
       document.getElementById("cust-name").textContent = customer.name;
       document.getElementById("cust-phone").textContent = customer.phone;
+
       const tier = computeCustomerTier(customer.total_drinks, customerTiers);
       const tierBadge = document.getElementById("tier-badge");
       tierBadge.textContent = `${tier.icon} سطح ${tier.name}`;
       tierBadge.style.color = tier.color;
+
       const streakBadge = document.getElementById("streak-badge");
       if ((customer.visit_streak || 0) >= 2) {
         document.getElementById("streak-num").textContent = customer.visit_streak;
