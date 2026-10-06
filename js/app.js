@@ -154,6 +154,7 @@ function computeWalletBonus(amountPaid, tiers) {
   const bonusAmount = Math.round((amountPaid * bonusPercent) / 100);
   return { bonusPercent, bonusAmount, totalCredited: amountPaid + bonusAmount };
 }
+
 function defaultCustomerTiers() {
   return [
     { min: 0, name: "برنزی", icon: "🥉", color: "#c08552" },
