@@ -39,6 +39,7 @@
               <th>پیشرفت</th>
               <th>کل نوشیدنی</th>
               <th>رایگان دریافتی</th>
+              <th>سطح</th>
               <th>کیف پول</th>
               <th>حضور پیوسته</th>
               <th>تاریخ عضویت</th>
@@ -102,6 +103,12 @@
       <div class="divider-line"></div>
       <div class="field"><label>حداقل مبلغ اولین شارژ دعوت‌شونده برای بونوس ویژه (تومان)</label><input type="number" id="s-first-topup-threshold" min="0" /></div>
       <div class="field"><label>مبلغ بونوس ویژه‌ی اولین شارژ (تومان، هر دو طرف می‌گیرن)</label><input type="number" id="s-first-topup-bonus" min="0" /></div>
+      <div class="divider-line"></div>
+      <div class="field" style="margin-bottom:8px;"><label>حد نصاب سطح‌بندی مشتری (بر اساس کل نوشیدنی)</label></div>
+      <div class="btn-row" style="margin-bottom:0;">
+        <div class="field" style="margin-bottom:0;"><input type="number" id="s-tier-silver-min" placeholder="حداقل نوشیدنی نقره‌ای" min="0" /></div>
+        <div class="field" style="margin-bottom:0;"><input type="number" id="s-tier-gold-min" placeholder="حداقل نوشیدنی طلایی" min="0" /></div>
+      </div>
       <div class="btn-row mt-16">
         <button class="btn btn-dark" id="settings-cancel">انصراف</button>
         <button class="btn btn-primary" id="settings-save">ذخیره تنظیمات</button>
@@ -123,8 +130,10 @@
     });
 
     let allCustomers = [];
+    let customerTiers = [];
 
     async function loadCustomers() {
+      customerTiers = await getCustomerTiers();
       const { data, error } = await supabaseClient
         .from("customers")
         .select("*")
@@ -158,12 +167,14 @@
       for (const c of list) {
         const tr = document.createElement("tr");
         const ready = c.drink_count >= DRINKS_FOR_FREE;
+        const tier = computeCustomerTier(c.total_drinks, customerTiers);
         tr.innerHTML = `
           <td data-label="نام">${escapeHtml(c.name)}</td>
           <td data-label="موبایل">${escapeHtml(c.phone)}</td>
           <td data-label="پیشرفت"><span class="badge ${ready ? "ready" : ""}">${c.drink_count} / ${DRINKS_FOR_FREE}${ready ? " 🎁" : ""}</span></td>
           <td data-label="کل نوشیدنی">${c.total_drinks || 0}</td>
           <td data-label="رایگان دریافتی">${c.free_drinks_redeemed || 0}</td>
+          <td data-label="سطح"><span style="color:${tier.color}; font-weight:700;">${tier.icon} ${tier.name}</span></td>
           <td data-label="کیف پول">${formatToman(c.wallet_balance || 0)}</td>
           <td data-label="حضور پیوسته">${c.visit_streak >= 2 ? `🔥 ${c.visit_streak}` : "—"}</td>
           <td data-label="عضویت">${fmtDate(c.created_at)}</td>
@@ -300,7 +311,7 @@
     const settingsModal = document.getElementById("settings-modal");
     document.getElementById("settings-btn").addEventListener("click", async () => {
       hideFormMsg(document.getElementById("settings-msg"));
-      const [staffPass, adminUser, adminPass, cardNumber, cardHolder, referralBonus, tiersRaw, firstTopupThreshold, firstTopupBonus] = await Promise.all([
+      const [staffPass, adminUser, adminPass, cardNumber, cardHolder, referralBonus, tiersRaw, firstTopupThreshold, firstTopupBonus, custTiersRaw] = await Promise.all([
         getSetting("staff_password"),
         getSetting("admin_username"),
         getSetting("admin_password"),
@@ -310,6 +321,7 @@
         getSetting("wallet_topup_tiers"),
         getSetting("first_topup_bonus_threshold"),
         getSetting("first_topup_referral_bonus"),
+        getSetting("customer_tiers"),
       ]);
       document.getElementById("s-staff-pass").value = staffPass || "";
       document.getElementById("s-admin-user").value = adminUser || "";
@@ -332,6 +344,16 @@
       document.getElementById("s-tier2-percent").value = sortedTiers[1]?.bonusPercent ?? "";
       document.getElementById("s-tier3-min").value = sortedTiers[2]?.min ?? "";
       document.getElementById("s-tier3-percent").value = sortedTiers[2]?.bonusPercent ?? "";
+
+      let custTiers = defaultCustomerTiers();
+      try {
+        const parsedCust = JSON.parse(custTiersRaw || "");
+        if (Array.isArray(parsedCust) && parsedCust.length) custTiers = parsedCust;
+      } catch {}
+      const sortedCustTiers = [...custTiers].sort((a, b) => a.min - b.min);
+      document.getElementById("s-tier-silver-min").value = sortedCustTiers[1]?.min ?? 50;
+      document.getElementById("s-tier-gold-min").value = sortedCustTiers[2]?.min ?? 150;
+
       settingsModal.classList.add("show");
     });
     document.getElementById("settings-cancel").addEventListener("click", () => settingsModal.classList.remove("show"));
@@ -352,6 +374,14 @@
         { min: parseInt(document.getElementById("s-tier3-min").value, 10) || 0, bonusPercent: parseInt(document.getElementById("s-tier3-percent").value, 10) || 0 },
       ].filter((t) => t.min > 0);
 
+      const silverMin = parseInt(document.getElementById("s-tier-silver-min").value, 10) || 50;
+      const goldMin = parseInt(document.getElementById("s-tier-gold-min").value, 10) || 150;
+      const customerTiersToSave = [
+        { min: 0, name: "برنزی", icon: "🥉", color: "#c08552" },
+        { min: silverMin, name: "نقره‌ای", icon: "🥈", color: "#b8c0c8" },
+        { min: goldMin, name: "طلایی", icon: "🥇", color: "#d4a054" },
+      ];
+
       if (!staffPass || !adminUser || !adminPass) {
         showFormMsg(msg, "همه فیلدها الزامی هستن.");
         return;
@@ -367,9 +397,12 @@
           setSetting("wallet_topup_tiers", JSON.stringify(tiers)),
           setSetting("first_topup_bonus_threshold", firstTopupThreshold || "0"),
           setSetting("first_topup_referral_bonus", firstTopupBonus || "0"),
+          setSetting("customer_tiers", JSON.stringify(customerTiersToSave)),
         ]);
         settingsModal.classList.remove("show");
         showToast("تنظیمات ذخیره شد");
+        customerTiers = customerTiersToSave;
+        renderTable(allCustomers);
       } catch (err) {
         console.error(err);
         showFormMsg(msg, "خطا در ذخیره‌سازی تنظیمات.");
