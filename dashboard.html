@@ -5,6 +5,15 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>کارت وفاداری من — HAYK</title>
 <link rel="stylesheet" href="css/styles.css" />
+<style>
+  .golden-box{margin:16px 0;padding:14px 16px;border-radius:16px;border:1px dashed rgba(255,211,107,.45);background:rgba(255,211,107,.06);text-align:center;}
+  .golden-box .g-title{font-weight:800;color:#ffd36b;font-size:15px;}
+  .golden-box .g-line{font-size:13px;color:#a89a8c;margin-top:6px;line-height:1.9;}
+  .golden-box .g-reward{font-size:13px;color:#f6f1e8;margin-top:4px;font-weight:600;}
+  .golden-box.active{border-style:solid;border-color:#ffd36b;background:linear-gradient(135deg,rgba(255,211,107,.22),rgba(245,166,35,.12));animation:gglow 2s ease-in-out infinite;}
+  @keyframes gglow{0%,100%{box-shadow:0 0 0 rgba(255,211,107,0)}50%{box-shadow:0 0 28px rgba(255,211,107,.45)}}
+  .golden-hint{margin:0 0 12px;padding:8px 12px;border-radius:12px;font-size:12px;font-weight:700;text-align:center;color:#1b120b;background:linear-gradient(135deg,#ffd36b,#f5a623);}
+</style>
 </head>
 <body>
 
@@ -46,6 +55,8 @@
 
       <div class="free-ready-banner hidden" id="ready-banner">🎉 تبریک! نوشیدنی بعدی‌تون رایگانه — به باریستا نشون بدید</div>
 
+      <div class="golden-box hidden" id="golden-box"></div>
+
       <div class="stat-grid">
         <div class="stat-box">
           <div class="num" id="stat-total">0</div>
@@ -83,6 +94,7 @@
           <p class="form-msg" id="staff-msg"></p>
         </div>
         <div id="staff-unlocked" class="hidden">
+          <div class="golden-hint hidden" id="golden-staff-hint"></div>
           <p class="small muted" style="margin-bottom:12px;">دسترسی فعال شد — می‌تونید نوشیدنی اضافه یا اصلاح کنید.</p>
           <div class="btn-row">
             <button class="btn btn-dark btn-sm" id="minus-btn" style="flex:1;">− ۱ نوشیدنی</button>
@@ -128,6 +140,7 @@
   <script src="https://cdn.jsdelivr.net/npm/davidshimjs-qrcodejs@0.0.2/qrcode.min.js"></script>
   <script src="js/config.js"></script>
   <script src="js/app.js"></script>
+  <script src="js/golden.js"></script>
   <script>
     const params = new URLSearchParams(window.location.search);
     const custId = params.get("id");
@@ -135,6 +148,7 @@
     let staffPasswordCache = null;
     let walletTiers = [];
     let customerTiers = [];
+    let goldenHour = defaultGoldenHour();
 
     async function load() {
       if (!custId) return showNotFound();
@@ -143,6 +157,7 @@
         if (!customer) return showNotFound();
         walletTiers = await getWalletTiers();
         customerTiers = await getCustomerTiers();
+        goldenHour = await getGoldenHour();
         render();
         maybeShowAnnouncement();
       } catch (err) {
@@ -155,6 +170,30 @@
       document.getElementById("loading-card").classList.add("hidden");
       document.getElementById("notfound-card").classList.remove("hidden");
     }
+
+    function renderGolden() {
+      const box = document.getElementById("golden-box");
+      const hint = document.getElementById("golden-staff-hint");
+      if (!goldenHour.enabled) {
+        box.classList.add("hidden");
+        hint.classList.add("hidden");
+        return;
+      }
+      const active = isGoldenHourNow(goldenHour);
+      box.classList.remove("hidden");
+      box.classList.toggle("active", active);
+      box.innerHTML =
+        '<div class="g-title">⚡ ساعت طلایی' + (active ? " — همین الان فعاله!" : "") + '</div>' +
+        '<div class="g-line">' + goldenDaysLabel(goldenHour.days) + "، ساعت " + goldenFa(goldenHour.start) + " تا " + goldenFa(goldenHour.end) + '</div>' +
+        '<div class="g-reward">' + goldenRewardLabel(goldenHour) + '</div>';
+      if (active) {
+        hint.textContent = "⚡ الان ساعت طلاییه — با ثبت نوشیدنی، هدیه خودکار اعمال می‌شه";
+        hint.classList.remove("hidden");
+      } else {
+        hint.classList.add("hidden");
+      }
+    }
+    setInterval(() => { if (customer) renderGolden(); }, 60000);
 
     function render() {
       document.getElementById("loading-card").classList.add("hidden");
@@ -205,6 +244,7 @@
       document.getElementById("stat-total").textContent = customer.total_drinks || 0;
       document.getElementById("stat-free").textContent = customer.free_drinks_redeemed || 0;
       document.getElementById("wallet-amount").textContent = formatToman(customer.wallet_balance || 0);
+      renderGolden();
 
       document.getElementById("qrcode").innerHTML = "";
       new QRCode(document.getElementById("qrcode"), {
@@ -310,14 +350,25 @@
 
     async function adjustDrink(delta) {
       if (!customer) return;
-      let { drink_count, total_drinks, free_drinks_redeemed, last_visit_date, visit_streak } = customer;
+      // همیشه با تازه‌ترین اطلاعات کار می‌کنیم
+      try {
+        const fresh = await fetchCustomerById(customer.id);
+        if (fresh) customer = fresh;
+        goldenHour = await getGoldenHour();
+      } catch (e) { console.error(e); }
+      let { drink_count, total_drinks, free_drinks_redeemed, last_visit_date, visit_streak, wallet_balance } = customer;
+      wallet_balance = wallet_balance || 0;
+      let goldenBonus = null;
 
       if (delta > 0) {
         if (drink_count >= DRINKS_FOR_FREE) {
           free_drinks_redeemed = (free_drinks_redeemed || 0) + 1;
           drink_count = 0;
         } else {
-          drink_count += 1;
+          const g = goldenAdjust(goldenHour, drink_count, wallet_balance);
+          drink_count = g.drink_count;
+          wallet_balance = g.wallet_balance;
+          goldenBonus = g.bonus;
         }
         total_drinks = (total_drinks || 0) + 1;
 
@@ -339,7 +390,7 @@
       try {
         const { data, error } = await supabaseClient
           .from("customers")
-          .update({ drink_count, total_drinks, free_drinks_redeemed, last_visit_date, visit_streak })
+          .update({ drink_count, total_drinks, free_drinks_redeemed, last_visit_date, visit_streak, wallet_balance })
           .eq("id", customer.id)
           .select()
           .single();
@@ -352,7 +403,7 @@
         }
 
         render();
-        showToast(delta > 0 ? "یک نوشیدنی اضافه شد ☕" : "اصلاح شد");
+        showToast(delta > 0 ? goldenToastText(goldenBonus) : "اصلاح شد");
       } catch (err) {
         console.error(err);
         showToast("مشکلی پیش اومد", true);
