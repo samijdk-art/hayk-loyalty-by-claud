@@ -5,6 +5,15 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>پنل مدیریت — HAYK Loyalty Club</title>
 <link rel="stylesheet" href="css/styles.css" />
+<style>
+  .field select{background:#1b120b;color:#f6f1e8;}
+  .field select option{background:#1b120b;color:#f6f1e8;}
+  input[type=time]{color-scheme:dark;}
+  .x-days{display:flex;flex-wrap:wrap;gap:8px;}
+  .x-days label{display:inline-flex;align-items:center;gap:6px;padding:8px 12px;border-radius:999px;border:1px solid rgba(212,160,84,.25);background:rgba(255,255,255,.04);font-size:13px;cursor:pointer;margin:0;}
+  .x-days input{width:auto;margin:0;}
+  .x-hint{font-size:12px;color:#a89a8c;margin-top:6px;line-height:1.8;}
+</style>
 </head>
 <body>
 
@@ -109,6 +118,35 @@
         <div class="field" style="margin-bottom:0;"><input type="number" id="s-tier-silver-min" placeholder="حداقل نوشیدنی نقره‌ای" min="0" /></div>
         <div class="field" style="margin-bottom:0;"><input type="number" id="s-tier-gold-min" placeholder="حداقل نوشیدنی طلایی" min="0" /></div>
       </div>
+      <div class="divider-line"></div>
+      <div class="field" style="margin-bottom:8px;"><label style="font-weight:800; color:#ffd36b;">⚡ ساعت طلایی</label></div>
+      <div class="field">
+        <label>وضعیت</label>
+        <select id="s-golden-enabled">
+          <option value="0">غیرفعال</option>
+          <option value="1">فعال</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>روزهای فعال</label>
+        <div class="x-days" id="s-golden-days"></div>
+      </div>
+      <div class="btn-row" style="margin-bottom:18px;">
+        <div class="field" style="margin-bottom:0;"><label>از ساعت</label><input type="time" id="s-golden-start" /></div>
+        <div class="field" style="margin-bottom:0;"><label>تا ساعت</label><input type="time" id="s-golden-end" /></div>
+      </div>
+      <div class="field">
+        <label>نوع هدیه</label>
+        <select id="s-golden-type">
+          <option value="wallet">هدیه نقدی به کیف پول (برای هر نوشیدنی)</option>
+          <option value="double">استمپ دوبرابر</option>
+        </select>
+      </div>
+      <div class="field" id="golden-bonus-field">
+        <label>مبلغ هدیه برای هر نوشیدنی (تومان)</label>
+        <input type="number" id="s-golden-bonus" min="0" />
+        <div class="x-hint">پیشنهاد: ۵٬۰۰۰ تومان. نوشیدنی رایگان (هشتمی) هدیه ساعت طلایی نداره. ساعت‌ها براساس ساعت دستگاهی هست که نوشیدنی رو ثبت می‌کنه.</div>
+      </div>
       <div class="btn-row mt-16">
         <button class="btn btn-dark" id="settings-cancel">انصراف</button>
         <button class="btn btn-primary" id="settings-save">ذخیره تنظیمات</button>
@@ -119,6 +157,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/config.js"></script>
   <script src="js/app.js"></script>
+  <script src="js/golden.js"></script>
   <script>
     if (sessionStorage.getItem("hayk_admin_auth") !== "1") {
       window.location.href = "staff-admin.html";
@@ -231,13 +270,24 @@
     }
 
     async function quickAdjust(customer, delta) {
-      let { drink_count, total_drinks, free_drinks_redeemed, last_visit_date, visit_streak } = customer;
+      // همیشه با تازه‌ترین اطلاعات مشتری کار می‌کنیم
+      try {
+        const fresh = await fetchCustomerById(customer.id);
+        if (fresh) customer = fresh;
+      } catch (e) { console.error(e); }
+      const golden = await getGoldenHour();
+      let { drink_count, total_drinks, free_drinks_redeemed, last_visit_date, visit_streak, wallet_balance } = customer;
+      wallet_balance = wallet_balance || 0;
+      let goldenBonus = null;
       if (delta > 0) {
         if (drink_count >= DRINKS_FOR_FREE) {
           free_drinks_redeemed = (free_drinks_redeemed || 0) + 1;
           drink_count = 0;
         } else {
-          drink_count += 1;
+          const g = goldenAdjust(golden, drink_count, wallet_balance);
+          drink_count = g.drink_count;
+          wallet_balance = g.wallet_balance;
+          goldenBonus = g.bonus;
         }
         total_drinks = (total_drinks || 0) + 1;
         const streakUpdate = computeStreak(last_visit_date, visit_streak);
@@ -255,11 +305,12 @@
       }
       const { error } = await supabaseClient
         .from("customers")
-        .update({ drink_count, total_drinks, free_drinks_redeemed, last_visit_date, visit_streak })
+        .update({ drink_count, total_drinks, free_drinks_redeemed, last_visit_date, visit_streak, wallet_balance })
         .eq("id", customer.id);
       if (error) { showToast("خطا در بروزرسانی", true); return; }
       if (delta > 0) {
         supabaseClient.from("visit_log").insert({ customer_id: customer.id }).then(() => {});
+        showToast(goldenToastText(goldenBonus));
       }
       loadCustomers();
     }
@@ -309,6 +360,15 @@
 
     // ---- settings modal ----
     const settingsModal = document.getElementById("settings-modal");
+    const goldenDaysBox = document.getElementById("s-golden-days");
+    goldenDaysBox.innerHTML = GOLDEN_WEEK_ORDER.map((d) =>
+      `<label><input type="checkbox" value="${d}" /> ${GOLDEN_DAY_NAMES[d]}</label>`).join("");
+    function toggleGoldenBonusField() {
+      document.getElementById("golden-bonus-field").style.display =
+        document.getElementById("s-golden-type").value === "wallet" ? "block" : "none";
+    }
+    document.getElementById("s-golden-type").addEventListener("change", toggleGoldenBonusField);
+
     document.getElementById("settings-btn").addEventListener("click", async () => {
       hideFormMsg(document.getElementById("settings-msg"));
       const [staffPass, adminUser, adminPass, cardNumber, cardHolder, referralBonus, tiersRaw, firstTopupThreshold, firstTopupBonus, custTiersRaw] = await Promise.all([
@@ -354,6 +414,15 @@
       document.getElementById("s-tier-silver-min").value = sortedCustTiers[1]?.min ?? 50;
       document.getElementById("s-tier-gold-min").value = sortedCustTiers[2]?.min ?? 150;
 
+      const gh = await getGoldenHour();
+      document.getElementById("s-golden-enabled").value = gh.enabled ? "1" : "0";
+      goldenDaysBox.querySelectorAll("input").forEach((cb) => { cb.checked = gh.days.includes(Number(cb.value)); });
+      document.getElementById("s-golden-start").value = gh.start;
+      document.getElementById("s-golden-end").value = gh.end;
+      document.getElementById("s-golden-type").value = gh.rewardType;
+      document.getElementById("s-golden-bonus").value = gh.walletBonus;
+      toggleGoldenBonusField();
+
       settingsModal.classList.add("show");
     });
     document.getElementById("settings-cancel").addEventListener("click", () => settingsModal.classList.remove("show"));
@@ -386,6 +455,27 @@
         showFormMsg(msg, "همه فیلدها الزامی هستن.");
         return;
       }
+
+      // ساعت طلایی
+      const gEnabled = document.getElementById("s-golden-enabled").value === "1";
+      const gDays = Array.from(goldenDaysBox.querySelectorAll("input:checked")).map((cb) => Number(cb.value));
+      const gStart = document.getElementById("s-golden-start").value;
+      const gEnd = document.getElementById("s-golden-end").value;
+      const gType = document.getElementById("s-golden-type").value === "double" ? "double" : "wallet";
+      const gBonus = parseInt(document.getElementById("s-golden-bonus").value, 10) || 0;
+      if (gEnabled) {
+        if (!gDays.length) { showFormMsg(msg, "برای ساعت طلایی حداقل یک روز انتخاب کنید."); return; }
+        if (!gStart || !gEnd || gStart >= gEnd) { showFormMsg(msg, "ساعت شروع ساعت طلایی باید قبل از ساعت پایانش باشه."); return; }
+        if (gType === "wallet" && gBonus <= 0) { showFormMsg(msg, "مبلغ هدیه ساعت طلایی باید بیشتر از صفر باشه."); return; }
+      }
+      const goldenToSave = {
+        enabled: gEnabled,
+        days: gDays.length ? gDays : defaultGoldenHour().days,
+        start: gStart || "19:00",
+        end: gEnd || "21:00",
+        rewardType: gType,
+        walletBonus: gBonus > 0 ? gBonus : 5000,
+      };
       try {
         await Promise.all([
           setSetting("staff_password", staffPass),
@@ -398,6 +488,7 @@
           setSetting("first_topup_bonus_threshold", firstTopupThreshold || "0"),
           setSetting("first_topup_referral_bonus", firstTopupBonus || "0"),
           setSetting("customer_tiers", JSON.stringify(customerTiersToSave)),
+          setSetting("golden_hour", JSON.stringify(goldenToSave)),
         ]);
         settingsModal.classList.remove("show");
         showToast("تنظیمات ذخیره شد");
