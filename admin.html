@@ -147,6 +147,11 @@
         <input type="number" id="s-golden-bonus" min="0" />
         <div class="x-hint">پیشنهاد: ۵٬۰۰۰ تومان. نوشیدنی رایگان (هشتمی) هدیه ساعت طلایی نداره. ساعت‌ها براساس ساعت دستگاهی هست که نوشیدنی رو ثبت می‌کنه.</div>
       </div>
+      <div class="field" id="golden-expire-field">
+        <label>مهلت استفاده از کش‌بک ساعت طلایی (روز) — صفر یعنی بدون انقضا</label>
+        <input type="number" id="s-golden-expire" min="0" />
+        <div class="x-hint">بعد از این مدت، کش‌بکِ خرج‌نشده خودکار از کیف پول کم می‌شه. پولی که خود مشتری شارژ کرده و هدیه‌های شارژ و دعوت هیچ‌وقت نمی‌سوزن. پیشنهاد: ۱۴.</div>
+      </div>
       <div class="btn-row mt-16">
         <button class="btn btn-dark" id="settings-cancel">انصراف</button>
         <button class="btn btn-primary" id="settings-save">ذخیره تنظیمات</button>
@@ -172,6 +177,7 @@
     let customerTiers = [];
 
     async function loadCustomers() {
+      await burnExpiredCashback();
       customerTiers = await getCustomerTiers();
       const { data, error } = await supabaseClient
         .from("customers")
@@ -309,6 +315,9 @@
         .eq("id", customer.id);
       if (error) { showToast("خطا در بروزرسانی", true); return; }
       if (delta > 0) {
+        if (goldenBonus && goldenBonus.type === "wallet") {
+          await recordCashbackGrant(customer.id, goldenBonus.amount, golden);
+        }
         supabaseClient.from("visit_log").insert({ customer_id: customer.id }).then(() => {});
         showToast(goldenToastText(goldenBonus));
       }
@@ -364,8 +373,9 @@
     goldenDaysBox.innerHTML = GOLDEN_WEEK_ORDER.map((d) =>
       `<label><input type="checkbox" value="${d}" /> ${GOLDEN_DAY_NAMES[d]}</label>`).join("");
     function toggleGoldenBonusField() {
-      document.getElementById("golden-bonus-field").style.display =
-        document.getElementById("s-golden-type").value === "wallet" ? "block" : "none";
+      const isWallet = document.getElementById("s-golden-type").value === "wallet";
+      document.getElementById("golden-bonus-field").style.display = isWallet ? "block" : "none";
+      document.getElementById("golden-expire-field").style.display = isWallet ? "block" : "none";
     }
     document.getElementById("s-golden-type").addEventListener("change", toggleGoldenBonusField);
 
@@ -421,6 +431,7 @@
       document.getElementById("s-golden-end").value = gh.end;
       document.getElementById("s-golden-type").value = gh.rewardType;
       document.getElementById("s-golden-bonus").value = gh.walletBonus;
+      document.getElementById("s-golden-expire").value = gh.cashbackExpireDays;
       toggleGoldenBonusField();
 
       settingsModal.classList.add("show");
@@ -463,6 +474,7 @@
       const gEnd = document.getElementById("s-golden-end").value;
       const gType = document.getElementById("s-golden-type").value === "double" ? "double" : "wallet";
       const gBonus = parseInt(document.getElementById("s-golden-bonus").value, 10) || 0;
+      const gExpire = Math.max(0, parseInt(document.getElementById("s-golden-expire").value, 10) || 0);
       if (gEnabled) {
         if (!gDays.length) { showFormMsg(msg, "برای ساعت طلایی حداقل یک روز انتخاب کنید."); return; }
         if (!gStart || !gEnd || gStart >= gEnd) { showFormMsg(msg, "ساعت شروع ساعت طلایی باید قبل از ساعت پایانش باشه."); return; }
@@ -475,6 +487,7 @@
         end: gEnd || "21:00",
         rewardType: gType,
         walletBonus: gBonus > 0 ? gBonus : 5000,
+        cashbackExpireDays: gExpire,
       };
       try {
         await Promise.all([
