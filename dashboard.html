@@ -84,6 +84,7 @@
         <h2 class="ch-title">کیف پول شما</h2>
         <div class="wallet-amount" id="wallet-amount">۰ تومان</div>
         <p class="note">هر بار شارژ کنید، هدیه می‌گیرید و از موجودی برای خرید توی کافه استفاده می‌کنید.</p>
+        <div id="cashback-note" class="hidden" style="margin-top:16px;padding:14px 16px;border-radius:18px;border:1.5px dashed var(--terra);font-size:14px;line-height:1.9;max-width:38ch;"></div>
         <a href="card-payment.html" class="btn btn-outline btn-sm mt-16" style="display:inline-flex;width:auto;">شارژ کیف پول</a>
       </section>
 
@@ -177,6 +178,7 @@
     async function load() {
       if (!custId) return showNotFound();
       try {
+        await burnExpiredCashback();
         customer = await fetchCustomerById(custId);
         if (!customer) return showNotFound();
         walletTiers = await getWalletTiers();
@@ -218,6 +220,20 @@
       }
     }
     setInterval(() => { if (customer) renderGolden(); }, 60000);
+
+    async function renderCashbackNote() {
+      const el = document.getElementById("cashback-note");
+      if (!el || !customer) return;
+      const s = await getCashbackSummary(customer.id);
+      if (!s) { el.classList.add("hidden"); return; }
+      // هیچ‌وقت بیشتر از موجودی واقعی کیف پول نشون نده
+      const total = Math.min(s.total, customer.wallet_balance || 0);
+      if (total <= 0) { el.classList.add("hidden"); return; }
+      const days = Math.max(0, Math.ceil((new Date(s.soonest) - Date.now()) / 86400000));
+      const when = days <= 0 ? "امروز" : toFaDigits(days) + " روز دیگه";
+      el.innerHTML = "⚡ <b>" + toFaDigits(total.toLocaleString("en-US")) + " تومان</b> از موجودیتون کش‌بک ساعت طلاییه و <b>" + when + "</b> می‌سوزه؛ زودتر خرجش کنید. بقیهٔ موجودی (شارژ خودتون) هیچ‌وقت نمی‌سوزه.";
+      el.classList.remove("hidden");
+    }
 
     function render() {
       document.getElementById("loading-card").classList.add("hidden");
@@ -273,6 +289,7 @@
       document.getElementById("stat-free").textContent = toFaDigits(customer.free_drinks_redeemed || 0);
       document.getElementById("wallet-amount").textContent = toFaDigits(formatToman(customer.wallet_balance || 0));
       renderGolden();
+      renderCashbackNote();
 
       document.getElementById("qrcode").innerHTML = "";
       new QRCode(document.getElementById("qrcode"), {
@@ -425,6 +442,11 @@
         if (error) throw error;
         customer = data;
 
+        // هدیهٔ ساعت طلایی رو به‌عنوان کش‌بک (با تاریخ انقضا) ثبت کن
+        if (delta > 0 && goldenBonus && goldenBonus.type === "wallet") {
+          await recordCashbackGrant(customer.id, goldenBonus.amount, goldenHour);
+        }
+
         if (delta > 0) {
           // fire-and-forget visit log entry for the stats dashboard
           supabaseClient.from("visit_log").insert({ customer_id: customer.id }).then(() => {});
@@ -565,6 +587,8 @@
           .single();
         if (error) throw error;
         customer = data;
+        // اول از کش‌بک مصرف می‌شه تا پول شارژی مشتری سالم بمونه
+        await consumeCashback(customer.id, amount);
         document.getElementById("deduct-amount").value = "";
         setBtnLoading(btn, false);
         render();
