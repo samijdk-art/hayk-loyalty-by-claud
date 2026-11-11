@@ -3,83 +3,273 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="theme-color" content="#a9502f" />
 <title>HAYK — باشگاه وفاداری</title>
 <link rel="stylesheet" href="css/styles.css" />
+<link rel="stylesheet" href="css/cinema.css" />
 <style>
-  html, body{ background: #000 !important; }
-  .bg-slideshow{ position:fixed; inset:0; z-index:0; overflow:hidden; background:#000; }
-  .bg-slide{
-    position:absolute; inset:0;
-    background-size:cover; background-position:center;
-    opacity:0; transition: opacity 1.8s ease;
-  }
+  /* =============== صحنهٔ اسکرولی: آسیاب ← ریختن ← نوشیدن =============== */
+  .story{ position:relative; height:430vh; }
+  .stage{ position:sticky; top:0; height:100vh; height:100svh; overflow:hidden; background:var(--terra); }
+  .bg{ position:absolute; inset:0; }
+  .bg-a{ background:linear-gradient(180deg,#a9502f 0%,#a9502f 58%,#e9d3b6 58%,#e9d3b6 100%); }
+  .bg-b{ background:linear-gradient(180deg,#c98a52 0%,#d9a56e 55%,#f2e7d6 55%,#f2e7d6 100%); opacity:0; }
+  .bg-c{ background:radial-gradient(ellipse at 50% 55%,#4a2a17 0%,#1d110a 70%); opacity:0; }
+
+  .topbar{ position:absolute; z-index:5; top:0; inset-inline:0; display:flex; align-items:center; justify-content:space-between; padding:18px 22px; }
+  .topbar .brandmark{ color:var(--cream); font-size:12px; letter-spacing:.28em; }
+  .topbar a{ color:var(--cream); font-size:13px; font-weight:700; text-decoration:none; padding:7px 14px; border-radius:999px; border:1.5px solid rgba(242,231,214,.7); }
+
+  .word{ position:absolute; z-index:1; inset-inline:0; top:9svh; text-align:center; pointer-events:none; user-select:none;
+    font-weight:900; line-height:.85; letter-spacing:-.03em; font-size:clamp(130px,44vw,250px); opacity:0; white-space:nowrap; }
+  .w1{ color:rgba(242,231,214,.22); } .w2{ color:rgba(255,255,255,.35); } .w3{ color:rgba(242,231,214,.08); }
+
+  .obj{ position:absolute; z-index:2; left:50%; top:22svh; width:min(76vw,320px); height:min(54svh,420px); transform:translateX(-50%); opacity:0; }
+  .obj svg{ width:100%; height:100%; overflow:visible; }
+
+  .cap{ position:absolute; z-index:3; inset-inline:24px; bottom:104px; opacity:0; max-width:420px; margin-inline:auto; }
+  .cap h2{ margin:0; font-size:clamp(26px,8vw,36px); font-weight:900; line-height:1.3; }
+  .cap p{ margin:8px 0 0; font-size:15px; line-height:1.95; opacity:.9; }
+  .c1,.c3{ color:var(--cream); } .c1 h2{ color:#fff; } .c2{ color:var(--ink); }
+
+  .intro{ position:absolute; z-index:4; inset-inline:24px; top:13svh; color:var(--cream); }
+  .intro .eyebrow{ font-family:'Inter',sans-serif; font-weight:800; font-size:12px; letter-spacing:.26em; color:var(--cream); opacity:.85; }
+  .intro h1{ margin:10px 0 0; font-size:clamp(46px,14vw,70px); font-weight:900; line-height:1.05; letter-spacing:-.02em; }
+  .intro p{ margin:12px 0 0; max-width:28ch; font-size:15px; line-height:1.95; opacity:.92; }
+  .cue{ position:absolute; z-index:4; inset-inline:0; bottom:100px; text-align:center; color:var(--ink); font-size:13px; font-weight:700; }
+  .cue i{ display:block; margin:6px auto 0; width:2px; height:26px; background:var(--ink); border-radius:2px; transform-origin:top; animation:cue 1.6s ease-in-out infinite; }
+  @keyframes cue{ 0%{ transform:scaleY(0); opacity:1;} 70%{ transform:scaleY(1); opacity:1;} 100%{ transform:scaleY(1); opacity:0;} }
+
+  .dock{ position:fixed; z-index:20; bottom:16px; left:50%; transform:translateX(-50%); display:flex; gap:6px; padding:6px;
+    background:rgba(29,17,10,.86); backdrop-filter:blur(10px); border-radius:999px; box-shadow:0 14px 40px -10px rgba(0,0,0,.6); width:min(92vw,420px); }
+  .dock a{ flex:1; text-align:center; padding:12px 8px; border-radius:999px; font-size:14px; font-weight:800; color:var(--cream); text-decoration:none; }
+  .dock a.primary{ background:var(--terra); }
+
+  /* ---------- انیمیشن‌های همیشه‌روشن ---------- */
+  .shake{ animation:shake .22s linear infinite; transform-origin:150px 380px; }
+  @keyframes shake{ 0%{ transform:translate(0,0) rotate(0);} 25%{ transform:translate(1.4px,-1px) rotate(.6deg);} 50%{ transform:translate(-1px,1px) rotate(-.5deg);} 75%{ transform:translate(1px,.6px) rotate(.4deg);} 100%{ transform:translate(0,0) rotate(0);} }
+  .fall{ animation:fall 1.1s ease-in infinite; }
+  .fall:nth-of-type(2){ animation-delay:.37s; } .fall:nth-of-type(3){ animation-delay:.74s; }
+  @keyframes fall{ 0%{ transform:translateY(-8px); opacity:0;} 15%{ opacity:1;} 100%{ transform:translateY(46px); opacity:0;} }
+  .burr{ animation:spin 1s linear infinite; transform-origin:150px 226px; }
+  @keyframes spin{ to{ transform:rotate(360deg); } }
+  .hb{ animation:jig .22s linear infinite; }
+  @keyframes jig{ 50%{ transform:translateY(1.6px); } }
+  .stream{ stroke-dasharray:7 6; animation:flow .5s linear infinite; }
+  @keyframes flow{ to{ stroke-dashoffset:-26; } }
+  .drip{ animation:drip 1s ease-in infinite; }
+  .drip:nth-of-type(2){ animation-delay:.5s; }
+  @keyframes drip{ 0%{ transform:translateY(0); opacity:0;} 20%{ opacity:1;} 100%{ transform:translateY(34px); opacity:0;} }
+  .wave{ animation:wave 4.5s linear infinite; }
+  @keyframes wave{ to{ transform:translateX(-50%); } }
+  .steam path{ fill:none; stroke:#e9d3b6; stroke-width:5; stroke-linecap:round; opacity:0; animation:steam 3.4s ease-in-out infinite; }
+  .steam path:nth-child(2){ animation-delay:1.1s; } .steam path:nth-child(3){ animation-delay:2.2s; }
+  @keyframes steam{ 0%{ opacity:0; transform:translateY(14px);} 35%{ opacity:.6;} 100%{ opacity:0; transform:translateY(-24px);} }
+  .splash circle{ animation:pop 2.2s ease-out infinite; transform-box:fill-box; transform-origin:center; }
+  .splash circle:nth-child(2){ animation-delay:.5s; } .splash circle:nth-child(3){ animation-delay:1.1s; } .splash circle:nth-child(4){ animation-delay:1.6s; }
+  @keyframes pop{ 0%{ transform:translateY(24px) scale(.4); opacity:0;} 25%{ opacity:.95;} 100%{ transform:translateY(-34px) scale(1); opacity:0;} }
+  .kettle{ animation:kt 3s ease-in-out infinite; transform-origin:70px 70px; }
+  @keyframes kt{ 50%{ transform:rotate(-1.6deg); } }
+
+  /* ---------- فصل‌های بعد از صحنه ---------- */
+  .join{ min-height:100svh; padding:72px 24px 120px; display:flex; flex-direction:column; justify-content:flex-end; }
+  .bg-slideshow{ position:absolute; inset:0; z-index:0; overflow:hidden; background:var(--espresso); }
+  .bg-slide{ position:absolute; inset:0; background-size:cover; background-position:center; opacity:0; transition:opacity 1.8s ease; }
   .bg-slide.active{ opacity:1; }
-  .bg-overlay{
-    position:fixed; inset:0; z-index:1;
-    background: rgba(10,6,3,0.5);
-  }
-  main.page{ position:relative; z-index:2; }
-  main.page .card{
-    background: rgba(24,17,11,0.55);
-    backdrop-filter: blur(3px);
-  }
+  .join::before{ content:""; position:absolute; inset:0; z-index:1; background:linear-gradient(180deg,rgba(29,17,10,.78) 0%,rgba(29,17,10,.5) 45%,rgba(29,17,10,.94) 100%); }
+  .join > *:not(.bg-slideshow){ position:relative; z-index:2; }
+  .join h2{ margin:0; font-size:clamp(44px,14vw,70px); font-weight:900; line-height:1.1; }
+  .join p.sub{ margin:14px 0 26px; max-width:30ch; font-size:16px; line-height:2; color:var(--latte); }
+  .join .cta{ display:grid; gap:12px; }
+  .join .cta .btn{ margin:0 !important; font-size:16px; padding:17px 20px; }
+  .join .btn-outline{ color:var(--cream); }
+  .home-golden{ margin-top:22px; padding:14px 16px; border-radius:20px; text-align:center; border:1.5px dashed rgba(232,196,143,.6); background:rgba(29,17,10,.55); }
+  .home-golden b{ display:block; color:var(--crema); font-size:15px; }
+  .home-golden span{ display:block; margin-top:4px; font-size:13px; line-height:1.9; color:var(--cream); }
+  .home-golden.active{ border-style:solid; border-color:var(--crema); animation:gglow 2s ease-in-out infinite; }
+  .home-wallet h2{ margin:0; font-size:clamp(36px,11vw,54px); font-weight:900; line-height:1.15; }
+  .home-wallet p{ margin:14px 0 22px; font-size:15px; line-height:2; max-width:32ch; }
+  .home-wallet .btn-primary{ background:var(--cream); color:var(--ink); }
+  .home-foot{ text-align:center; padding:34px 24px 110px; }
+  .home-foot a{ color:var(--latte); font-size:13px; opacity:.75; text-decoration:underline; text-underline-offset:4px; }
+  .home-foot .brandmark{ margin-bottom:12px; }
+
+  @media (prefers-reduced-motion:reduce){ .shake,.fall,.burr,.hb,.stream,.drip,.wave,.steam path,.splash circle,.kettle,.cue i{ animation:none !important; } }
 </style>
 </head>
-<body>
+<body class="cinema">
 
-  <div class="bg-slideshow" id="bg-slideshow"></div>
-  <div class="bg-overlay"></div>
+  <!-- تعریف دانهٔ قهوه برای استفادهٔ مجدد -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <symbol id="bean" viewBox="-12 -16 24 32">
+        <ellipse cx="0" cy="0" rx="10" ry="14" fill="#6b3b1f"/>
+        <ellipse cx="-3" cy="-4" rx="3" ry="7" fill="#8a512b" opacity=".6"/>
+        <path d="M-1 -13 C5 -5 -5 5 1 13" fill="none" stroke="#2a140a" stroke-width="2.2" stroke-linecap="round"/>
+      </symbol>
+      <linearGradient id="metal" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#4b423b"/><stop offset=".5" stop-color="#6d625a"/><stop offset="1" stop-color="#3a322c"/></linearGradient>
+      <linearGradient id="coffee" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#c98a52"/><stop offset=".45" stop-color="#7a4020"/><stop offset="1" stop-color="#3b1d0d"/></linearGradient>
+      <clipPath id="carafe-clip"><path d="M92 262 H208 V318 C208 356 184 376 150 376 C116 376 92 356 92 318 Z"/></clipPath>
+      <clipPath id="cup-clip"><path d="M44 78 H196 V128 C196 190 165 226 120 226 C75 226 44 190 44 128 Z"/></clipPath>
+    </defs>
+  </svg>
 
   <main class="page">
-    <div class="card">
-      <div class="brand-top">
-        <div class="gold-rule"></div>
-        <div class="brand-eyebrow" style="letter-spacing:2px; max-width:280px; line-height:1.6;">HAYK BAMLAND/SADEQIE</div>
+
+    <div class="story" id="story">
+      <div class="stage" id="stage">
+        <div class="bg bg-a" id="bgA"></div>
+        <div class="bg bg-b" id="bgB"></div>
+        <div class="bg bg-c" id="bgC"></div>
+
+        <div class="topbar">
+          <div class="brandmark">HAYK</div>
+          <a href="login.html">ورود</a>
+        </div>
+
+        <div class="word w1" id="w1" aria-hidden="true">آسیاب</div>
+        <div class="word w2" id="w2" aria-hidden="true">بریز</div>
+        <div class="word w3" id="w3" aria-hidden="true">بنوش</div>
+
+        <div class="intro" id="intro">
+          <div class="eyebrow">HAYK BAMLAND / SADEQIE</div>
+          <h1>باشگاه<br>وفاداری</h1>
+          <p>با هر قهوه امتیاز جمع کنید و از یک تجربهٔ لوکس قهوه لذت ببرید.</p>
+        </div>
+
+        <!-- صحنه ۱: آسیاب -->
+        <div class="obj" id="o1">
+          <svg viewBox="0 0 300 400" role="img" aria-label="آسیاب قهوه">
+            <ellipse cx="150" cy="384" rx="92" ry="9" fill="#1d110a" opacity=".25"/>
+            <g class="shake">
+              <path d="M72 36 H228 L204 160 H96 Z" fill="rgba(242,231,214,.16)" stroke="#f2e7d6" stroke-width="5" stroke-linejoin="round"/>
+              <g class="hb">
+                <use href="#bean" x="-12" y="-16" width="24" height="32" transform="translate(112 132) rotate(20)"/>
+                <use href="#bean" x="-12" y="-16" width="24" height="32" transform="translate(142 138) rotate(-35)"/>
+                <use href="#bean" x="-12" y="-16" width="24" height="32" transform="translate(172 132) rotate(60)"/>
+                <use href="#bean" x="-12" y="-16" width="24" height="32" transform="translate(128 108) rotate(-10)"/>
+                <use href="#bean" x="-12" y="-16" width="24" height="32" transform="translate(160 112) rotate(35)"/>
+                <use href="#bean" x="-12" y="-16" width="24" height="32" transform="translate(186 106) rotate(-50)"/>
+                <use href="#bean" x="-12" y="-16" width="24" height="32" transform="translate(118 84) rotate(45)"/>
+                <use href="#bean" x="-12" y="-16" width="24" height="32" transform="translate(150 86) rotate(-20)"/>
+                <use href="#bean" x="-12" y="-16" width="24" height="32" transform="translate(182 82) rotate(15)"/>
+              </g>
+              <rect x="82" y="158" width="136" height="22" rx="7" fill="#241a14"/>
+              <path d="M90 180 H210 V268 Q210 290 188 290 H112 Q90 290 90 268 Z" fill="url(#metal)"/>
+              <circle cx="150" cy="226" r="30" fill="#241a14"/>
+              <g class="burr"><circle cx="150" cy="226" r="18" fill="#a9502f"/><path d="M150 208 V244 M132 226 H168" stroke="#f2e7d6" stroke-width="3" stroke-linecap="round" opacity=".7"/></g>
+              <rect x="138" y="290" width="24" height="26" rx="4" fill="#241a14"/>
+            </g>
+            <use class="fall" href="#bean" x="-12" y="-16" width="16" height="22" transform="translate(150 326)"/>
+            <use class="fall" href="#bean" x="-12" y="-16" width="16" height="22" transform="translate(146 326)"/>
+            <use class="fall" href="#bean" x="-12" y="-16" width="16" height="22" transform="translate(154 326)"/>
+            <path id="mound" d="M82 376 Q150 292 218 376 Z" fill="#5a3019" style="transform-origin:150px 376px; transform:scaleY(.05)"/>
+            <ellipse cx="150" cy="378" rx="92" ry="8" fill="#e9d3b6" opacity=".55"/>
+          </svg>
+        </div>
+
+        <!-- صحنه ۲: ریختن -->
+        <div class="obj" id="o2">
+          <svg viewBox="0 0 300 400" role="img" aria-label="دم‌کردن قهوه">
+            <g class="kettle">
+              <g transform="translate(-20 20) rotate(-16 120 80)">
+                <path d="M28 62 C-8 62 -8 108 28 108" fill="none" stroke="#2b2420" stroke-width="9" stroke-linecap="round"/>
+                <rect x="28" y="40" width="96" height="76" rx="22" fill="#2b2420"/>
+                <rect x="50" y="30" width="52" height="14" rx="6" fill="#3b312b"/>
+                <circle cx="76" cy="26" r="6" fill="#3b312b"/>
+                <path d="M118 74 C150 66 164 80 168 98" fill="none" stroke="#2b2420" stroke-width="9" stroke-linecap="round"/>
+                <rect x="40" y="58" width="12" height="40" rx="6" fill="#f2e7d6" opacity=".12"/>
+              </g>
+            </g>
+            <path class="stream" id="stream" d="M151 108 V190" stroke="#7a4020" stroke-width="6" stroke-linecap="round" fill="none"/>
+            <path d="M70 178 H230 L190 262 H110 Z" fill="#f2e7d6" stroke="#e9d3b6" stroke-width="4" stroke-linejoin="round"/>
+            <ellipse cx="150" cy="180" rx="76" ry="8" fill="#3b1d0d"/>
+            <path d="M86 206 L214 206" stroke="#a9502f" stroke-width="6" opacity=".6" stroke-linecap="round"/>
+            <rect x="130" y="262" width="40" height="8" rx="3" fill="#e9d3b6"/>
+            <ellipse class="drip" cx="150" cy="272" rx="3" ry="4.5" fill="#5a2e16"/>
+            <ellipse class="drip" cx="150" cy="272" rx="3" ry="4.5" fill="#5a2e16"/>
+            <path d="M92 262 H208 V318 C208 356 184 376 150 376 C116 376 92 356 92 318 Z" fill="rgba(242,231,214,.16)"/>
+            <g clip-path="url(#carafe-clip)">
+              <g id="carafeLiquid" style="transform:translateY(130px)">
+                <g class="wave"><path d="M-150 250 q15 -6 30 0 t30 0 t30 0 t30 0 t30 0 t30 0 t30 0 t30 0 t30 0 t30 0 t30 0 t30 0 t30 0 t30 0 t30 0 t30 0 V400 H-150 Z" fill="url(#coffee)"/></g>
+              </g>
+            </g>
+            <path d="M92 262 H208 V318 C208 356 184 376 150 376 C116 376 92 356 92 318 Z" fill="none" stroke="#2b2420" stroke-width="5" stroke-linejoin="round"/>
+            <ellipse cx="150" cy="388" rx="86" ry="8" fill="#1d110a" opacity=".18"/>
+          </svg>
+        </div>
+
+        <!-- صحنه ۳: نوشیدن -->
+        <div class="obj" id="o3">
+          <svg viewBox="0 0 260 290" role="img" aria-label="فنجون قهوه">
+            <defs><radialGradient id="glow" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#e8c48f" stop-opacity=".6"/><stop offset="1" stop-color="#e8c48f" stop-opacity="0"/></radialGradient></defs>
+            <ellipse id="cupGlow" cx="120" cy="160" rx="170" ry="150" fill="url(#glow)" style="opacity:0"/>
+            <ellipse cx="120" cy="258" rx="108" ry="15" fill="#f2e7d6" opacity=".14"/>
+            <ellipse cx="120" cy="252" rx="88" ry="11" fill="#e8c48f"/>
+            <path d="M196 98 H214 C244 98 244 164 206 164 H190" fill="none" stroke="#f2e7d6" stroke-width="11" stroke-linecap="round"/>
+            <path d="M44 78 H196 V128 C196 190 165 226 120 226 C75 226 44 190 44 128 Z" fill="#f2e7d6" opacity=".1"/>
+            <g clip-path="url(#cup-clip)">
+              <g id="cupLiquid" style="transform:translateY(240px)">
+                <g class="wave"><path d="M-240 0 q30 -12 60 0 t60 0 t60 0 t60 0 t60 0 t60 0 t60 0 t60 0 t60 0 t60 0 t60 0 t60 0 v400 h-720 z" fill="url(#coffee)"/></g>
+              </g>
+            </g>
+            <path d="M44 78 H196 V128 C196 190 165 226 120 226 C75 226 44 190 44 128 Z" fill="none" stroke="#f2e7d6" stroke-width="7" stroke-linejoin="round"/>
+            <ellipse cx="120" cy="78" rx="76" ry="9" fill="none" stroke="#f2e7d6" stroke-width="5"/>
+            <g class="steam"><path d="M92 58 q-10 -16 0 -30 t0 -28"/><path d="M122 56 q-10 -16 0 -30 t0 -28"/><path d="M152 58 q-10 -16 0 -30 t0 -28"/></g>
+            <g class="splash" fill="#c98a52"><circle cx="80" cy="70" r="5"/><circle cx="118" cy="66" r="6"/><circle cx="158" cy="70" r="4.5"/><circle cx="100" cy="72" r="3.5"/></g>
+          </svg>
+        </div>
+
+        <div class="cap c1" id="c1"><h2>هر نوشیدنی، یک دونه</h2><p>با هر قهوه‌ای که می‌خورید یک دونه جمع می‌کنید.</p></div>
+        <div class="cap c2" id="c2"><h2>کیف پولتون رو شارژ کنید</h2><p>هر شارژ هدیه داره و با موجودی توی کافه خرید می‌کنید.</p></div>
+        <div class="cap c3" id="c3"><h2>هفتمی که پر شد، بعدی رایگانه</h2><p>دوستاتون رو دعوت کنید؛ هر دوتون هدیه می‌گیرید.</p></div>
+
+        <div class="cue" id="cue">پایین بکشید<i></i></div>
       </div>
-
-      <h1 class="page-title">باشگاه وفاداری</h1>
-      <p class="page-sub">با هر قهوه امتیاز جمع کنید، به جوایز ویژه دست پیدا کنید و از یک تجربه‌ی لوکس قهوه لذت ببرید.</p>
-
-      <a href="join.html" class="btn btn-primary">☕ عضویت در باشگاه</a>
-      <a href="login.html" class="btn btn-outline">👤 ورود مشتری</a>
-      <a href="menu.html" class="btn btn-outline">📖 منوی کافه</a>
-      <a href="staff-admin.html" class="btn btn-dark">🧑‍💼 کارکنان / مدیریت</a>
-
-      <div class="footer-divider"></div>
-
-      <div class="footer-icons">
-        <div class="item">
-          <div class="icon">🍵</div>
-          <div class="label">کسب امتیاز</div>
-        </div>
-        <div class="item">
-          <div class="icon">🎁</div>
-          <div class="label">نوشیدنی رایگان</div>
-        </div>
-        <div class="item">
-          <div class="icon">⭐</div>
-          <div class="label">جوایز ویژه</div>
-        </div>
-      </div>
-
-      <p class="center small muted mt-24">
-        💰 می‌خواید کیف پولتون رو شارژ کنید؟ <a href="card-payment.html" style="color:var(--gold); font-weight:700;">پرداخت کارت‌به‌کارت</a>
-      </p>
     </div>
+
+    <!-- پایان: عضویت -->
+    <section class="ch ch-dark join">
+      <div class="bg-slideshow" id="bg-slideshow"></div>
+      <h2>قهوه‌ات رو<br>بنوش، هدیه‌ات رو<br>بگیر</h2>
+      <p class="sub">عضویت رایگانه و فقط چند ثانیه طول می‌کشه.</p>
+      <div class="cta">
+        <a href="join.html" class="btn btn-primary">☕ عضویت در باشگاه</a>
+        <a href="login.html" class="btn btn-outline">👤 ورود مشتری</a>
+        <a href="menu.html" class="btn btn-outline">📖 منوی کافه</a>
+      </div>
+      <div class="home-golden hidden" id="home-golden"></div>
+    </section>
+
+    <section class="ch ch-terra home-wallet">
+      <div class="giant" aria-hidden="true">پول</div>
+      <h2>کیف پولتون رو شارژ کنید</h2>
+      <p>با پرداخت کارت‌به‌کارت شارژ کنید و هدیهٔ شارژ بگیرید.</p>
+      <a href="card-payment.html" class="btn btn-primary">💰 پرداخت کارت‌به‌کارت</a>
+    </section>
+
+    <footer class="ch ch-dark home-foot">
+      <div class="brandmark">HAYK</div>
+      <a href="staff-admin.html">ورود کارکنان و مدیریت</a>
+    </footer>
   </main>
+
+  <nav class="dock" aria-label="دسترسی سریع">
+    <a href="join.html" class="primary">عضویت</a>
+    <a href="login.html">ورود</a>
+    <a href="menu.html">منو</a>
+  </nav>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/config.js"></script>
   <script src="js/app.js"></script>
+  <script src="js/golden.js"></script>
   <script>
+    // ---------- اسلاید پس‌زمینه (از پنل ادمین) — پشت بخش عضویت ----------
     async function loadBackgroundSlideshow() {
       try {
-        const { data, error } = await supabaseClient
-          .from("bg_images")
-          .select("*")
-          .order("sort_order", { ascending: true });
+        const { data, error } = await supabaseClient.from("bg_images").select("*").order("sort_order", { ascending: true });
         if (error || !data || data.length === 0) return;
-
         const container = document.getElementById("bg-slideshow");
         data.forEach((img, i) => {
           const slide = document.createElement("div");
@@ -87,7 +277,6 @@
           slide.style.backgroundImage = `url("${img.image_url}")`;
           container.appendChild(slide);
         });
-
         if (data.length > 1) {
           let current = 0;
           const slides = container.querySelectorAll(".bg-slide");
@@ -97,11 +286,91 @@
             slides[current].classList.add("active");
           }, 6000);
         }
-      } catch (err) {
-        console.error(err);
-      }
+      } catch (err) { console.error(err); }
     }
+
+    // ---------- ساعت طلایی ----------
+    async function showGoldenHour() {
+      try {
+        if (typeof getGoldenHour !== "function") return;
+        const gh = await getGoldenHour();
+        if (!gh.enabled) return;
+        const box = document.getElementById("home-golden");
+        const active = isGoldenHourNow(gh);
+        box.classList.remove("hidden");
+        box.classList.toggle("active", active);
+        box.innerHTML = "<b>⚡ ساعت طلایی" + (active ? " — همین الان فعاله!" : "") + "</b>" +
+          "<span>" + goldenDaysLabel(gh.days) + "، ساعت " + goldenFa(gh.start) + " تا " + goldenFa(gh.end) + "<br>" + goldenRewardLabel(gh) + "</span>";
+      } catch (err) { console.error(err); }
+    }
+
+    // ---------- صحنهٔ اسکرولی ----------
+    (function () {
+      const $ = (id) => document.getElementById(id);
+      const story = $("story");
+      const bg = [$("bgA"), $("bgB"), $("bgC")];
+      const words = [$("w1"), $("w2"), $("w3")];
+      const objs = [$("o1"), $("o2"), $("o3")];
+      const caps = [$("c1"), $("c2"), $("c3")];
+      const intro = $("intro"), cue = $("cue");
+      const mound = $("mound"), carafe = $("carafeLiquid"), cup = $("cupLiquid"), glow = $("cupGlow"), stream = $("stream");
+      const themeMeta = document.querySelector('meta[name="theme-color"]');
+      const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
+      const centers = [0.17, 0.5, 0.83];
+      const weight = (p, c, i) => {
+        if (i === 0 && p < c) return 1;      // صحنهٔ اول از همون ابتدا کامل دیده می‌شه
+        if (i === 2 && p > c) return 1;      // صحنهٔ آخر تا انتها می‌مونه
+        return clamp((0.19 - Math.abs(p - c)) / 0.05);
+      };
+      let ticking = false;
+
+      function update() {
+        ticking = false;
+        const rect = story.getBoundingClientRect();
+        const total = story.offsetHeight - window.innerHeight;
+        const p = clamp(-rect.top / total);
+
+        const w = centers.map((c, i) => weight(p, c, i));
+        for (let i = 0; i < 3; i++) {
+          const dir = p < centers[i] ? 1 : -1;
+          const shift = (1 - w[i]) * 36 * dir;
+          bg[i].style.opacity = i === 0 ? Math.max(w[0], 0) : w[i];
+          objs[i].style.opacity = w[i];
+          objs[i].style.transform = "translateX(-50%) translateY(" + shift + "px) scale(" + (0.92 + 0.08 * w[i]) + ")";
+          caps[i].style.opacity = w[i];
+          caps[i].style.transform = "translateY(" + shift * 0.6 + "px)";
+          words[i].style.opacity = i === 0 ? clamp(w[0] * clamp((p - 0.06) / 0.08)) : w[i];
+          words[i].style.transform = "translateY(" + (shift * 1.4 - p * 40) + "px)";
+        }
+        // پس‌زمینهٔ اول همیشه زیر بقیه هست
+        bg[0].style.opacity = 1;
+        // مقدمه: با شروع اسکرول محو می‌شه
+        const introO = 1 - clamp(p / 0.09);
+        // توی مقدمه آسیاب پایین‌تر و کوچیک‌تره تا روی متن نیفته؛ بعد بالا میاد
+        objs[0].style.transform = "translateX(-50%) translateY(" + (introO * 120 + (1 - w[0]) * 36) + "px) scale(" + (0.8 + 0.2 * (1 - introO)) + ")";
+        caps[0].style.opacity = w[0] * clamp((p - 0.04) / 0.06);
+        intro.style.opacity = introO;
+        intro.style.transform = "translateY(" + (-p * 260) + "px)";
+        cue.style.opacity = 1 - clamp(p / 0.05);
+
+        // پیشرفت هر صحنه
+        const lp1 = clamp(p / 0.3), lp2 = clamp((p - 0.31) / 0.36), lp3 = clamp((p - 0.67) / 0.25);
+        mound.style.transform = "scaleY(" + (0.05 + 0.95 * lp1) + ")";
+        carafe.style.transform = "translateY(" + (130 - lp2 * 112) + "px)";
+        stream.style.opacity = lp2 < 0.96 ? 1 : 0;
+        cup.style.transform = "translateY(" + (232 - lp3 * 148) + "px)";
+        glow.style.opacity = lp3 > 0.94 ? 1 : 0;
+
+        if (themeMeta) themeMeta.setAttribute("content", w[2] > 0.5 ? "#1d110a" : (w[1] > 0.5 ? "#c98a52" : "#a9502f"));
+      }
+      function onScroll() { if (!ticking) { ticking = true; requestAnimationFrame(update); } }
+      window.addEventListener("scroll", onScroll, { passive: true });
+      window.addEventListener("resize", onScroll);
+      update();
+    })();
+
     loadBackgroundSlideshow();
+    showGoldenHour();
   </script>
 </body>
 </html>
