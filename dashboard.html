@@ -3,127 +3,151 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="theme-color" content="#1d110a" />
 <title>کارت وفاداری من — HAYK</title>
 <link rel="stylesheet" href="css/styles.css" />
-<style>
-  .golden-box{margin:16px 0;padding:14px 16px;border-radius:16px;border:1px dashed rgba(255,211,107,.45);background:rgba(255,211,107,.06);text-align:center;}
-  .golden-box .g-title{font-weight:800;color:#ffd36b;font-size:15px;}
-  .golden-box .g-line{font-size:13px;color:#a89a8c;margin-top:6px;line-height:1.9;}
-  .golden-box .g-reward{font-size:13px;color:#f6f1e8;margin-top:4px;font-weight:600;}
-  .golden-box.active{border-style:solid;border-color:#ffd36b;background:linear-gradient(135deg,rgba(255,211,107,.22),rgba(245,166,35,.12));animation:gglow 2s ease-in-out infinite;}
-  @keyframes gglow{0%,100%{box-shadow:0 0 0 rgba(255,211,107,0)}50%{box-shadow:0 0 28px rgba(255,211,107,.45)}}
-  .golden-hint{margin:0 0 12px;padding:8px 12px;border-radius:12px;font-size:12px;font-weight:700;text-align:center;color:#1b120b;background:linear-gradient(135deg,#ffd36b,#f5a623);}
-</style>
+<link rel="stylesheet" href="css/cinema.css" />
 </head>
-<body>
+<body class="cinema">
 
   <main class="page">
-    <a href="index.html" class="link-back">→ صفحه اصلی</a>
 
-    <div class="card" id="loading-card">
-      <p class="center muted"><span class="loading-dot"></span>در حال بارگذاری کارت شما…</p>
-    </div>
+    <div class="loader" id="loading-card"><p><span class="loading-dot"></span>در حال بارگذاری کارت شما…</p></div>
 
-    <div class="card hidden" id="content-card">
-      <div class="brand-top">
-        <div class="gold-rule"></div>
-        <div class="brand-eyebrow">HAYK</div>
-      </div>
+    <div id="content-card" class="hidden">
 
-      <div class="avatar-badge" id="avatar"></div>
-      <h1 class="page-title" style="font-size:26px;" id="cust-name"></h1>
-      <p class="center muted small" id="cust-phone"></p>
-
-      <div class="tier-badge-wrap">
-        <div class="tier-badge" id="tier-badge"></div>
-      </div>
-
-      <div class="streak-badge-wrap">
-        <div class="streak-badge hidden" id="streak-badge">🔥 <span id="streak-num"></span> روز متوالی</div>
-      </div>
-
-      <div class="progress-outer mt-24">
-        <div class="progress-inner" id="progress-bar" style="width:0%;"></div>
-      </div>
-
-      <div class="drink-counter-big">
-        <div class="num"><span id="counter-current">0</span><span class="of" id="counter-of"> / ۷</span></div>
-        <div class="label" id="counter-label"></div>
-      </div>
-
-      <div class="cup-row big" id="cup-row"></div>
-
-      <div class="free-ready-banner hidden" id="ready-banner">🎉 تبریک! نوشیدنی بعدی‌تون رایگانه — به باریستا نشون بدید</div>
-
-      <div class="golden-box hidden" id="golden-box"></div>
-
-      <div class="stat-grid">
-        <div class="stat-box">
-          <div class="num" id="stat-total">0</div>
-          <div class="cap">کل نوشیدنی‌ها</div>
+      <!-- فصل ۱: بنوش -->
+      <section class="ch ch-dark hero">
+        <div class="giant" aria-hidden="true">بنوش</div>
+        <div class="hero-top">
+          <a href="index.html" class="back">→ صفحه اصلی</a>
+          <div class="brandmark">HAYK</div>
         </div>
-        <div class="stat-box">
-          <div class="num" id="stat-free">0</div>
-          <div class="cap">نوشیدنی رایگان دریافتی</div>
-        </div>
-      </div>
 
-      <div class="wallet-box">
-        <div class="wallet-label">💰 کیف پول شما</div>
+        <div class="who">
+          <div class="avatar-badge" id="avatar"></div>
+          <div>
+            <h1 id="cust-name"></h1>
+            <p id="cust-phone"></p>
+          </div>
+        </div>
+        <div class="pills">
+          <div class="tier-badge-wrap"><div class="tier-badge" id="tier-badge"></div></div>
+          <div class="streak-badge-wrap"><div class="streak-badge hidden" id="streak-badge">🔥 <span id="streak-num"></span> روز متوالی</div></div>
+        </div>
+
+        <div class="cup-stage" id="cup-stage">
+          <svg class="cup-svg" viewBox="0 0 260 270" role="img" aria-label="پیشرفت نوشیدنی‌ها">
+            <defs>
+              <clipPath id="cup-clip"><path d="M44 78 H196 V128 C196 190 165 226 120 226 C75 226 44 190 44 128 Z"/></clipPath>
+              <linearGradient id="coffee" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stop-color="#c98a52"/><stop offset=".45" stop-color="#7a4020"/><stop offset="1" stop-color="#3b1d0d"/>
+              </linearGradient>
+              <radialGradient id="glow" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#e8c48f" stop-opacity=".55"/><stop offset="1" stop-color="#e8c48f" stop-opacity="0"/></radialGradient>
+            </defs>
+            <ellipse class="cup-glow" cx="120" cy="150" rx="150" ry="140" fill="url(#glow)"/>
+            <ellipse cx="120" cy="244" rx="104" ry="14" fill="#f2e7d6" opacity=".16"/>
+            <ellipse cx="120" cy="238" rx="86" ry="11" fill="#e8c48f" opacity=".9"/>
+            <path d="M196 98 H214 C244 98 244 164 206 164 H190" fill="none" stroke="#f2e7d6" stroke-width="11" stroke-linecap="round"/>
+            <path d="M44 78 H196 V128 C196 190 165 226 120 226 C75 226 44 190 44 128 Z" fill="#f2e7d6" opacity=".1"/>
+            <g clip-path="url(#cup-clip)">
+              <g class="liquid" id="liquid" style="transform:translateY(240px)">
+                <g class="wave"><path d="M-240 0 q30 -12 60 0 t60 0 t60 0 t60 0 t60 0 t60 0 t60 0 t60 0 t60 0 t60 0 t60 0 t60 0 v400 h-720 z" fill="url(#coffee)"/></g>
+              </g>
+            </g>
+            <path d="M44 78 H196 V128 C196 190 165 226 120 226 C75 226 44 190 44 128 Z" fill="none" stroke="#f2e7d6" stroke-width="7" stroke-linejoin="round"/>
+            <ellipse cx="120" cy="78" rx="76" ry="9" fill="none" stroke="#f2e7d6" stroke-width="5"/>
+            <g class="steam"><path d="M92 58 q-10 -16 0 -30 t0 -28"/><path d="M122 56 q-10 -16 0 -30 t0 -28"/><path d="M152 58 q-10 -16 0 -30 t0 -28"/></g>
+          </svg>
+        </div>
+
+        <div class="count">
+          <div class="num"><span id="counter-current">0</span><span class="of" id="counter-of"> / ۷</span></div>
+          <div class="label" id="counter-label"></div>
+        </div>
+
+        <div class="cup-row" id="cup-row"></div>
+
+        <div class="free-ready-banner hidden" id="ready-banner">🎉 نوشیدنی بعدی‌تون رایگانه — به باریستا نشون بدید</div>
+
+        <div class="golden-box hidden" id="golden-box"></div>
+
+        <div class="stats">
+          <div><div class="n" id="stat-total">0</div><div class="c">کل نوشیدنی‌ها</div></div>
+          <div><div class="n" id="stat-free">0</div><div class="c">نوشیدنی رایگان دریافتی</div></div>
+        </div>
+      </section>
+
+      <!-- فصل ۲: کیف پول -->
+      <section class="ch ch-cream">
+        <div class="giant" aria-hidden="true">پول</div>
+        <h2 class="ch-title">کیف پول شما</h2>
         <div class="wallet-amount" id="wallet-amount">۰ تومان</div>
-      </div>
+        <p class="note">هر بار شارژ کنید، هدیه می‌گیرید و از موجودی برای خرید توی کافه استفاده می‌کنید.</p>
+        <a href="card-payment.html" class="btn btn-outline btn-sm mt-16" style="display:inline-flex;width:auto;">شارژ کیف پول</a>
+      </section>
 
-      <div class="section-title">کد وفاداری شما</div>
-      <div class="qr-wrap" id="qrcode"></div>
-      <p class="center small muted">این کد رو موقع سفارش به باریستا نشون بدید</p>
+      <!-- فصل ۳: کد -->
+      <section class="ch ch-terra">
+        <div class="giant" aria-hidden="true">کد</div>
+        <h2 class="ch-title">کد وفاداری شما</h2>
+        <div class="qr-card"><div class="qr-wrap" id="qrcode"></div></div>
+        <p class="qr-note">موقع سفارش، این کد رو به باریستا نشون بدید.</p>
+      </section>
 
-      <div class="referral-box">
-        <div class="referral-title">🎁 دوستاتون رو دعوت کنید</div>
-        <p class="small muted" style="margin-bottom:12px;">با هر دوستی که با لینک شما عضو بشه، هر دوتون یه هدیه‌ی نقدی می‌گیرید. اگه دوستتون توی اولین شارژش مبلغ کافی بذاره، هر دوتون یه هدیه‌ی دیگه هم می‌گیرید!</p>
-        <button class="btn btn-outline btn-sm btn-block" id="copy-referral-btn">📋 کپی لینک دعوت</button>
-      </div>
+      <!-- فصل ۴: دعوت -->
+      <section class="ch ch-latte">
+        <div class="giant" aria-hidden="true">دوست</div>
+        <h2 class="ch-title">دوستاتون رو دعوت کنید</h2>
+        <p style="font-size:15px;line-height:2;margin:0 0 18px;max-width:36ch;">با هر دوستی که با لینک شما عضو بشه، هر دوتون هدیهٔ نقدی می‌گیرید. اگه دوستتون توی اولین شارژش مبلغ کافی بذاره، هر دوتون یه هدیهٔ دیگه هم می‌گیرید.</p>
+        <button class="btn btn-primary" id="copy-referral-btn">کپی لینک دعوت</button>
+      </section>
 
-      <!-- Staff-only add drink box -->
-      <div class="staff-box" id="staff-box">
-        <div class="title">🔒 دسترسی کارکنان</div>
-        <div id="staff-locked">
-          <div class="field" style="margin-bottom:10px;">
-            <input type="password" id="staff-pass" placeholder="رمز عبور کارکنان" />
+      <!-- کارکنان -->
+      <section class="ch ch-roast" style="padding-bottom:72px;">
+        <div class="staff-box" id="staff-box">
+          <div class="title">🔒 دسترسی کارکنان</div>
+          <div id="staff-locked">
+            <div class="field" style="margin-bottom:10px;">
+              <input type="password" id="staff-pass" placeholder="رمز عبور کارکنان" />
+            </div>
+            <button class="btn btn-outline btn-sm btn-block" id="staff-unlock-btn">باز کردن دسترسی</button>
+            <p class="form-msg" id="staff-msg"></p>
           </div>
-          <button class="btn btn-outline btn-sm btn-block" id="staff-unlock-btn">باز کردن دسترسی</button>
-          <p class="form-msg" id="staff-msg"></p>
+          <div id="staff-unlocked" class="hidden">
+            <div class="golden-hint hidden" id="golden-staff-hint"></div>
+            <p class="small muted" style="margin-bottom:12px;">دسترسی فعال شد — می‌تونید نوشیدنی اضافه یا اصلاح کنید.</p>
+            <div class="btn-row">
+              <button class="btn btn-dark btn-sm" id="minus-btn" style="flex:1;">− ۱ نوشیدنی</button>
+              <button class="btn btn-primary btn-sm" id="plus-btn" style="flex:2;">+ ۱ نوشیدنی</button>
+            </div>
+
+            <div class="divider-line"></div>
+
+            <div class="title" style="margin-bottom:10px;">💰 شارژ کیف پول مشتری</div>
+            <div class="field" style="margin-bottom:8px;">
+              <input type="number" id="topup-amount" placeholder="مبلغی که مشتری پرداخت کرده (تومان)" min="0" />
+            </div>
+            <p class="small muted" id="topup-preview" style="margin-bottom:10px;"></p>
+            <button class="btn btn-primary btn-sm btn-block" id="topup-btn">شارژ کن</button>
+
+            <div class="divider-line"></div>
+
+            <div class="title" style="margin-bottom:10px;">🧾 کسر از کیف پول (پرداخت خرید با کیف پول)</div>
+            <div class="field" style="margin-bottom:8px;">
+              <input type="number" id="deduct-amount" placeholder="مبلغ خریدی که با کیف پول پرداخت شد" min="0" />
+            </div>
+            <button class="btn btn-outline btn-sm btn-block" id="deduct-btn">کسر کن</button>
+          </div>
         </div>
-        <div id="staff-unlocked" class="hidden">
-          <div class="golden-hint hidden" id="golden-staff-hint"></div>
-          <p class="small muted" style="margin-bottom:12px;">دسترسی فعال شد — می‌تونید نوشیدنی اضافه یا اصلاح کنید.</p>
-          <div class="btn-row">
-            <button class="btn btn-dark btn-sm" id="minus-btn" style="flex:1;">− ۱ نوشیدنی</button>
-            <button class="btn btn-primary btn-sm" id="plus-btn" style="flex:2;">+ ۱ نوشیدنی</button>
-          </div>
-
-          <div class="divider-line"></div>
-
-          <div class="title" style="margin-bottom:10px;">💰 شارژ کیف پول مشتری</div>
-          <div class="field" style="margin-bottom:8px;">
-            <input type="number" id="topup-amount" placeholder="مبلغی که مشتری پرداخت کرده (تومان)" min="0" />
-          </div>
-          <p class="small muted" id="topup-preview" style="margin-bottom:10px;"></p>
-          <button class="btn btn-primary btn-sm btn-block" id="topup-btn">شارژ کن</button>
-
-          <div class="divider-line"></div>
-
-          <div class="title" style="margin-bottom:10px;">🧾 کسر از کیف پول (پرداخت خرید با کیف پول)</div>
-          <div class="field" style="margin-bottom:8px;">
-            <input type="number" id="deduct-amount" placeholder="مبلغ خریدی که با کیف پول پرداخت شد" min="0" />
-          </div>
-          <button class="btn btn-outline btn-sm btn-block" id="deduct-btn">کسر کن</button>
-        </div>
-      </div>
+      </section>
     </div>
 
-    <div class="card hidden" id="notfound-card">
-      <p class="center muted">این کارت پیدا نشد یا حذف شده.</p>
-      <a href="index.html" class="btn btn-outline mt-16">بازگشت به صفحه اصلی</a>
+    <div class="loader hidden" id="notfound-card">
+      <div>
+        <p>این کارت پیدا نشد یا حذف شده.</p>
+        <a href="index.html" class="btn btn-outline mt-16" style="display:inline-flex;width:auto;">بازگشت به صفحه اصلی</a>
+      </div>
     </div>
   </main>
 
@@ -210,28 +234,32 @@
 
       const streakBadge = document.getElementById("streak-badge");
       if ((customer.visit_streak || 0) >= 2) {
-        document.getElementById("streak-num").textContent = customer.visit_streak;
+        document.getElementById("streak-num").textContent = toFaDigits(customer.visit_streak);
         streakBadge.classList.remove("hidden");
       } else {
         streakBadge.classList.add("hidden");
       }
 
-      const pct = Math.min(100, Math.round((customer.drink_count / DRINKS_FOR_FREE) * 100));
-      document.getElementById("progress-bar").style.width = pct + "%";
+      const fill = Math.min(1, (customer.drink_count || 0) / DRINKS_FOR_FREE);
+      // سطح قهوه داخل فنجان: بالای قهوه از y=226 (خالی) تا y=84 (پر)
+      const liquidY = 232 - fill * 148;
+      requestAnimationFrame(() => {
+        document.getElementById("liquid").style.transform = "translateY(" + liquidY + "px)";
+      });
+      document.getElementById("cup-stage").classList.toggle("full", fill >= 1);
 
-      document.getElementById("counter-current").textContent = customer.drink_count;
-      document.getElementById("counter-of").textContent = ` / ${DRINKS_FOR_FREE}`;
+      document.getElementById("counter-current").textContent = toFaDigits(customer.drink_count);
+      document.getElementById("counter-of").textContent = ` / ${toFaDigits(DRINKS_FOR_FREE)}`;
 
       const remaining = Math.max(0, DRINKS_FOR_FREE - customer.drink_count);
       document.getElementById("counter-label").textContent =
-        remaining === 0 ? "آماده‌ی دریافت نوشیدنی رایگان! 🎉" : `${remaining} نوشیدنی مونده تا رایگان`;
+        remaining === 0 ? "نوشیدنی بعدی رایگانه 🎉" : `${toFaDigits(remaining)} نوشیدنی تا رایگان`;
 
       const cupRow = document.getElementById("cup-row");
       cupRow.innerHTML = "";
       for (let i = 0; i < DRINKS_FOR_FREE; i++) {
         const cup = document.createElement("div");
         cup.className = "cup" + (i < customer.drink_count ? " filled" : "");
-        cup.textContent = "☕";
         cupRow.appendChild(cup);
       }
       const freeCup = document.createElement("div");
@@ -241,9 +269,9 @@
 
       document.getElementById("ready-banner").classList.toggle("hidden", remaining !== 0);
 
-      document.getElementById("stat-total").textContent = customer.total_drinks || 0;
-      document.getElementById("stat-free").textContent = customer.free_drinks_redeemed || 0;
-      document.getElementById("wallet-amount").textContent = formatToman(customer.wallet_balance || 0);
+      document.getElementById("stat-total").textContent = toFaDigits(customer.total_drinks || 0);
+      document.getElementById("stat-free").textContent = toFaDigits(customer.free_drinks_redeemed || 0);
+      document.getElementById("wallet-amount").textContent = toFaDigits(formatToman(customer.wallet_balance || 0));
       renderGolden();
 
       document.getElementById("qrcode").innerHTML = "";
@@ -547,6 +575,25 @@
         showToast("خطا در کسر از کیف پول", true);
       }
     });
+
+    function toFaDigits(n) { return String(n).replace(/\d/g, (d) => "۰۱۲۳۴۵۶۷۸۹"[d]); }
+
+    // حرکت ملایم کلمه‌های بزرگ پشت هر فصل هنگام اسکرول
+    (function () {
+      if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+      let ticking = false;
+      window.addEventListener("scroll", () => {
+        if (ticking) return;
+        ticking = true;
+        requestAnimationFrame(() => {
+          document.querySelectorAll(".ch").forEach((ch) => {
+            const r = ch.getBoundingClientRect();
+            ch.style.setProperty("--sy", (-r.top).toFixed(0));
+          });
+          ticking = false;
+        });
+      }, { passive: true });
+    })();
 
     load();
   </script>
