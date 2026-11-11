@@ -14,7 +14,7 @@ function goldenToman(n) {
 }
 
 function defaultGoldenHour() {
-  return { enabled: false, days: [6, 0, 1, 2, 3], start: "19:00", end: "21:00", rewardType: "wallet", walletBonus: 5000 };
+  return { enabled: false, days: [6, 0, 1, 2, 3], start: "19:00", end: "21:00", rewardType: "wallet", walletBonus: 5000, cashbackExpireDays: 14 };
 }
 
 async function getGoldenHour() {
@@ -30,6 +30,8 @@ async function getGoldenHour() {
         end: o.end || def.end,
         rewardType: o.rewardType === "double" ? "double" : "wallet",
         walletBonus: Number(o.walletBonus) > 0 ? Number(o.walletBonus) : def.walletBonus,
+        // اگه این مقدار قبلاً ذخیره نشده باشه، انقضا خاموشه (۰) تا ناخواسته چیزی نسوزه
+        cashbackExpireDays: o.cashbackExpireDays !== undefined ? Math.max(0, Number(o.cashbackExpireDays) || 0) : 0,
       };
     }
   } catch (e) { console.error(e); }
@@ -59,7 +61,8 @@ function goldenDaysLabel(days) {
 function goldenRewardLabel(gh) {
   return gh.rewardType === "double"
     ? "هر نوشیدنی دو تا امتیاز حساب می‌شه (استمپ دوبرابر)"
-    : "برای هر نوشیدنی " + goldenToman(gh.walletBonus) + " هدیه به کیف پولتون";
+    : "برای هر نوشیدنی " + goldenToman(gh.walletBonus) + " هدیه به کیف پولتون" +
+      (gh.cashbackExpireDays > 0 ? " (تا " + goldenFa(gh.cashbackExpireDays) + " روز اعتبار داره؛ بعدش می‌سوزه)" : "");
 }
 
 // فقط برای یک نوشیدنی «عادی» صدا زده می‌شه (نه نوشیدنی رایگان).
@@ -86,4 +89,61 @@ function goldenToastText(bonus) {
   if (!bonus) return "یک نوشیدنی اضافه شد ☕";
   if (bonus.type === "wallet") return "⚡ ساعت طلایی! " + goldenToman(bonus.amount) + " به کیف پول اضافه شد ☕";
   return "⚡ ساعت طلایی! استمپ دوبرابر ثبت شد ☕☕";
+}
+
+
+// ============================================================
+// کش‌بک ساعت طلایی با مهلت انقضا
+// فقط هدیهٔ ساعت طلایی منقضی می‌شه؛ پولی که خود مشتری شارژ کرده هیچ‌وقت دست نمی‌خوره.
+// ============================================================
+
+// هر بار هدیهٔ ساعت طلایی به کیف پول اضافه می‌شه، یک «سند کش‌بک» با تاریخ انقضا ثبت می‌شه.
+// اگه جدول کش‌بک ساخته نشده باشه، هدیه مثل پول معمولی کیف پول می‌مونه (چیزی نمی‌سوزه).
+async function recordCashbackGrant(customerId, amount, gh) {
+  if (!gh || !(gh.cashbackExpireDays > 0) || !(amount > 0)) return;
+  var expires = new Date(Date.now() + gh.cashbackExpireDays * 86400000).toISOString();
+  try {
+    var res = await supabaseClient.from("cashback_grants").insert({
+      customer_id: customerId, amount: amount, remaining: amount, expires_at: expires,
+    });
+    if (res.error) console.warn("cashback grant not saved", res.error);
+  } catch (e) { console.warn(e); }
+}
+
+// هر بار از کیف پول کم می‌شه، اول از کش‌بک (نزدیک‌ترین انقضا) مصرف می‌شه
+// تا پول شارژی مشتری سالم بمونه و کش‌بک قبل از سوختن خرج بشه.
+async function consumeCashback(customerId, spent) {
+  try {
+    var res = await supabaseClient.from("cashback_grants")
+      .select("id,remaining").eq("customer_id", customerId)
+      .gt("remaining", 0).gt("expires_at", new Date().toISOString())
+      .order("expires_at", { ascending: true });
+    if (res.error || !res.data) return;
+    var left = spent;
+    for (var i = 0; i < res.data.length && left > 0; i++) {
+      var g = res.data[i];
+      var use = Math.min(g.remaining, left);
+      await supabaseClient.from("cashback_grants").update({ remaining: g.remaining - use }).eq("id", g.id);
+      left -= use;
+    }
+  } catch (e) { console.warn(e); }
+}
+
+// کش‌بک‌های منقضی‌شده رو می‌سوزونه (تابع داخل دیتابیس). علاوه بر زمان‌بندی روزانه،
+// هر بار صفحه‌ای باز می‌شه هم صدا زده می‌شه تا حتماً به‌روز باشه.
+async function burnExpiredCashback() {
+  try { await supabaseClient.rpc("burn_expired_cashback"); } catch (e) { console.warn(e); }
+}
+
+// خلاصهٔ کش‌بک فعال مشتری: { total, soonest, soonestAmount }
+async function getCashbackSummary(customerId) {
+  try {
+    var res = await supabaseClient.from("cashback_grants")
+      .select("remaining,expires_at").eq("customer_id", customerId)
+      .gt("remaining", 0).gt("expires_at", new Date().toISOString())
+      .order("expires_at", { ascending: true });
+    if (res.error || !res.data || !res.data.length) return null;
+    var total = res.data.reduce(function (s, g) { return s + g.remaining; }, 0);
+    return { total: total, soonest: res.data[0].expires_at, soonestAmount: res.data[0].remaining };
+  } catch (e) { return null; }
 }
