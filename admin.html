@@ -3,530 +3,212 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>پنل مدیریت — HAYK Loyalty Club</title>
+<title>مدیریت رادیو — HAYK</title>
 <link rel="stylesheet" href="css/styles.css" />
 <style>
-  .field select{background:#1b120b;color:#f6f1e8;}
-  .field select option{background:#1b120b;color:#f6f1e8;}
-  input[type=time]{color-scheme:dark;}
-  .x-days{display:flex;flex-wrap:wrap;gap:8px;}
-  .x-days label{display:inline-flex;align-items:center;gap:6px;padding:8px 12px;border-radius:999px;border:1px solid rgba(212,160,84,.25);background:rgba(255,255,255,.04);font-size:13px;cursor:pointer;margin:0;}
-  .x-days input{width:auto;margin:0;}
-  .x-hint{font-size:12px;color:#a89a8c;margin-top:6px;line-height:1.8;}
+  .drop{border:2px dashed rgba(212,160,84,.4);border-radius:16px;padding:28px 16px;text-align:center;cursor:pointer;background:rgba(255,255,255,.03);transition:.2s;}
+  .drop.over{background:rgba(212,160,84,.12);border-color:#d4a054;}
+  .drop b{display:block;font-size:16px;margin-bottom:6px;}
+  .drop span{font-size:12px;color:#a89a8c;}
+  .up-row{display:flex;align-items:center;gap:10px;font-size:13px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.06);}
+  .up-row .bar{flex:1;height:6px;border-radius:6px;background:rgba(255,255,255,.1);overflow:hidden;}
+  .up-row .bar i{display:block;height:100%;width:0;background:#d4a054;transition:width .2s;}
+  .tr{display:grid;grid-template-columns:auto 1fr 1fr auto auto auto;gap:8px;align-items:center;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.06);}
+  .tr input[type=text]{width:100%;padding:8px 10px;border-radius:10px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.05);color:inherit;font:inherit;font-size:13px;}
+  .tr.off{opacity:.45;}
+  .tr .n{font-size:12px;color:#a89a8c;min-width:22px;text-align:center;}
+  .x-hint{font-size:12px;color:#a89a8c;line-height:1.9;}
+  @media(max-width:640px){.tr{grid-template-columns:auto 1fr auto;}.tr .col2{grid-column:2 / 4;}}
 </style>
 </head>
 <body>
-
-  <main class="page page-wide">
-    <div class="card">
-      <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:14px; margin-bottom:8px;">
-        <div class="brand-top" style="align-items:flex-start; margin-bottom:0;">
-          <div class="brand-eyebrow">HAYK — پنل مدیریت</div>
-        </div>
-        <div class="btn-row">
-          <a href="stats-admin.html" class="btn btn-outline btn-sm">📊 آمار و تحلیل</a>
-          <a href="menu-admin.html" class="btn btn-outline btn-sm">📖 مدیریت منو</a>
-          <a href="bg-admin.html" class="btn btn-outline btn-sm">🖼️ پس‌زمینه</a>
-          <button class="btn btn-outline btn-sm" id="settings-btn">⚙️ تنظیمات</button>
-          <button class="btn btn-dark btn-sm" id="logout-btn">خروج</button>
-        </div>
+<main class="page page-wide">
+  <div class="card">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px;margin-bottom:8px;">
+      <div class="brand-top" style="align-items:flex-start;margin-bottom:0;">
+        <div class="brand-eyebrow">HAYK — مدیریت رادیو</div>
       </div>
-
-      <div class="toolbar mt-24">
-        <input type="text" class="search-input" id="search" placeholder="جستجو بر اساس نام یا شماره موبایل…" />
-        <button class="btn btn-primary btn-sm" id="refresh-btn">↻ بروزرسانی</button>
-      </div>
-
-      <div id="stats-row" class="stat-grid" style="grid-template-columns: repeat(3,1fr);"></div>
-
-      <div class="table-wrap mt-16">
-        <table>
-          <thead>
-            <tr>
-              <th>نام</th>
-              <th>موبایل</th>
-              <th>پیشرفت</th>
-              <th>کل نوشیدنی</th>
-              <th>رایگان دریافتی</th>
-              <th>سطح</th>
-              <th>کیف پول</th>
-              <th>حضور پیوسته</th>
-              <th>تاریخ عضویت</th>
-              <th>عملیات</th>
-            </tr>
-          </thead>
-          <tbody id="table-body"></tbody>
-        </table>
-      </div>
-      <p class="center muted small mt-16" id="empty-msg" style="display:none;">هیچ مشتری‌ای پیدا نشد.</p>
-    </div>
-  </main>
-
-  <!-- Edit customer modal -->
-  <div class="modal-overlay" id="edit-modal">
-    <div class="modal-box">
-      <div class="modal-title">ویرایش مشتری</div>
-      <div id="edit-msg" class="form-msg"></div>
-      <div class="field"><label>نام</label><input type="text" id="e-name" /></div>
-      <div class="field"><label>موبایل</label><input type="text" id="e-phone" /></div>
-      <div class="field"><label>کد ۴ رقمی ورود (خالی = مشتری دفعه‌ی بعد کد جدید می‌سازه)</label><input type="text" id="e-pin" maxlength="4" inputmode="numeric" placeholder="مثلاً 1234" /></div>
-      <div class="field"><label>تعداد نوشیدنی فعلی (از ۷)</label><input type="number" id="e-drinks" min="0" /></div>
-      <div class="field"><label>کل نوشیدنی مصرف‌شده</label><input type="number" id="e-total" min="0" /></div>
-      <div class="field"><label>تعداد نوشیدنی رایگان دریافتی</label><input type="number" id="e-free" min="0" /></div>
-      <div class="field"><label>موجودی کیف پول (تومان)</label><input type="number" id="e-wallet" min="0" /></div>
-      <div class="btn-row mt-16">
-        <button class="btn btn-dark" id="edit-cancel">انصراف</button>
-        <button class="btn btn-primary" id="edit-save">ذخیره</button>
+      <div class="btn-row">
+        <a href="radio.html" target="_blank" class="btn btn-primary btn-sm">▶ باز کردن رادیو</a>
+        <a href="admin.html" class="btn btn-outline btn-sm">← پنل مدیریت</a>
       </div>
     </div>
+
+    <p class="x-hint mt-16">
+      فقط آهنگ‌هایی رو آپلود کنید که حق پخشش در کافه رو دارید (موسیقی بدون کپی‌رایت یا لایسنس‌شده).
+      فرمت‌های mp3 / m4a / ogg / wav — حداکثر ۵۰ مگابایت برای هر فایل.
+    </p>
+
+    <div class="field mt-16" style="max-width:420px;">
+      <label for="q">کیفیت و حجم (فشرده‌سازی خودکار قبل از آپلود)</label>
+      <select id="q" style="background:#1b120b;color:#f6f1e8;">
+        <option value="128">۱۲۸ — پیشنهادی (حدود ۳ مگابایت برای هر آهنگ)</option>
+        <option value="96">۹۶ — کم‌حجم‌تر (حدود ۲.۳ مگابایت)</option>
+        <option value="64m">۶۴ مونو — خیلی کم‌حجم (حدود ۱.۵ مگابایت)</option>
+        <option value="0">بدون فشرده‌سازی (فایل اصلی)</option>
+      </select>
+      <div class="x-hint">فایل‌هایی که از قبل کم‌حجم باشن، همون‌طور که هستن آپلود می‌شن. فشرده‌سازی روی دستگاه خودتون انجام می‌شه و برای هر آهنگ چند ثانیه طول می‌کشه؛ هنگام آپلود صفحه رو نبندید.</div>
+    </div>
+
+    <label class="drop mt-16" id="drop">
+      <b>🎵 فایل‌های موسیقی رو اینجا بندازید یا لمس کنید</b>
+      <span>می‌تونید چند فایل رو با هم انتخاب کنید</span>
+      <input type="file" id="file" accept="audio/*" multiple hidden />
+    </label>
+    <div id="uploads" class="mt-16"></div>
+
+    <h3 class="mt-24" style="margin-bottom:4px;">لیست آهنگ‌ها <span id="count" class="x-hint"></span></h3>
+    <p class="x-hint">اسم و خواننده رو می‌تونید ویرایش کنید؛ با خاموش کردن، آهنگ بدون حذف از رادیو بیرون می‌ره.</p>
+    <div id="list" class="mt-16"></div>
   </div>
+</main>
 
-  <!-- Settings modal -->
-  <div class="modal-overlay" id="settings-modal">
-    <div class="modal-box">
-      <div class="modal-title">تنظیمات دسترسی</div>
-      <div id="settings-msg" class="form-msg"></div>
-      <div class="field"><label>رمز عبور کارکنان (Staff)</label><input type="text" id="s-staff-pass" /></div>
-      <div class="divider-line"></div>
-      <div class="field"><label>نام کاربری ادمین</label><input type="text" id="s-admin-user" /></div>
-      <div class="field"><label>رمز عبور ادمین</label><input type="text" id="s-admin-pass" /></div>
-      <div class="divider-line"></div>
-      <div class="field"><label>شماره کارت (برای صفحه‌ی پرداخت کارت‌به‌کارت)</label><input type="text" id="s-card-number" placeholder="0000000000000000" /></div>
-      <div class="field"><label>نام صاحب حساب</label><input type="text" id="s-card-holder" placeholder="مثلاً سام جودکی" /></div>
-      <div class="divider-line"></div>
-      <div class="field"><label>مبلغ هدیه‌ی دعوت دوستان (تومان، هر دو طرف همینو می‌گیرن)</label><input type="number" id="s-referral-bonus" min="0" /></div>
-      <div class="divider-line"></div>
-      <div class="field" style="margin-bottom:8px;"><label>پله‌های بونوس شارژ کیف پول</label></div>
-      <div class="btn-row" style="margin-bottom:10px;">
-        <div class="field" style="margin-bottom:0;"><input type="number" id="s-tier1-min" placeholder="حداقل مبلغ (پله ۱)" min="0" /></div>
-        <div class="field" style="margin-bottom:0; max-width:110px;"><input type="number" id="s-tier1-percent" placeholder="٪ بونوس" min="0" /></div>
-      </div>
-      <div class="btn-row" style="margin-bottom:10px;">
-        <div class="field" style="margin-bottom:0;"><input type="number" id="s-tier2-min" placeholder="حداقل مبلغ (پله ۲)" min="0" /></div>
-        <div class="field" style="margin-bottom:0; max-width:110px;"><input type="number" id="s-tier2-percent" placeholder="٪ بونوس" min="0" /></div>
-      </div>
-      <div class="btn-row" style="margin-bottom:0;">
-        <div class="field" style="margin-bottom:0;"><input type="number" id="s-tier3-min" placeholder="حداقل مبلغ (پله ۳)" min="0" /></div>
-        <div class="field" style="margin-bottom:0; max-width:110px;"><input type="number" id="s-tier3-percent" placeholder="٪ بونوس" min="0" /></div>
-      </div>
-      <div class="divider-line"></div>
-      <div class="field"><label>حداقل مبلغ اولین شارژ دعوت‌شونده برای بونوس ویژه (تومان)</label><input type="number" id="s-first-topup-threshold" min="0" /></div>
-      <div class="field"><label>مبلغ بونوس ویژه‌ی اولین شارژ (تومان، هر دو طرف می‌گیرن)</label><input type="number" id="s-first-topup-bonus" min="0" /></div>
-      <div class="divider-line"></div>
-      <div class="field" style="margin-bottom:8px;"><label>حد نصاب سطح‌بندی مشتری (بر اساس کل نوشیدنی)</label></div>
-      <div class="btn-row" style="margin-bottom:0;">
-        <div class="field" style="margin-bottom:0;"><input type="number" id="s-tier-silver-min" placeholder="حداقل نوشیدنی نقره‌ای" min="0" /></div>
-        <div class="field" style="margin-bottom:0;"><input type="number" id="s-tier-gold-min" placeholder="حداقل نوشیدنی طلایی" min="0" /></div>
-      </div>
-      <div class="divider-line"></div>
-      <div class="field" style="margin-bottom:8px;"><label style="font-weight:800; color:#ffd36b;">⚡ ساعت طلایی</label></div>
-      <div class="field">
-        <label>وضعیت</label>
-        <select id="s-golden-enabled">
-          <option value="0">غیرفعال</option>
-          <option value="1">فعال</option>
-        </select>
-      </div>
-      <div class="field">
-        <label>روزهای فعال</label>
-        <div class="x-days" id="s-golden-days"></div>
-      </div>
-      <div class="btn-row" style="margin-bottom:18px;">
-        <div class="field" style="margin-bottom:0;"><label>از ساعت</label><input type="time" id="s-golden-start" /></div>
-        <div class="field" style="margin-bottom:0;"><label>تا ساعت</label><input type="time" id="s-golden-end" /></div>
-      </div>
-      <div class="field">
-        <label>نوع هدیه</label>
-        <select id="s-golden-type">
-          <option value="wallet">هدیه نقدی به کیف پول (برای هر نوشیدنی)</option>
-          <option value="double">استمپ دوبرابر</option>
-        </select>
-      </div>
-      <div class="field" id="golden-bonus-field">
-        <label>مبلغ هدیه برای هر نوشیدنی (تومان)</label>
-        <input type="number" id="s-golden-bonus" min="0" />
-        <div class="x-hint">پیشنهاد: ۵٬۰۰۰ تومان. نوشیدنی رایگان (هشتمی) هدیه ساعت طلایی نداره. ساعت‌ها براساس ساعت دستگاهی هست که نوشیدنی رو ثبت می‌کنه.</div>
-      </div>
-      <div class="field" id="golden-expire-field">
-        <label>مهلت استفاده از کش‌بک ساعت طلایی (روز) — صفر یعنی بدون انقضا</label>
-        <input type="number" id="s-golden-expire" min="0" />
-        <div class="x-hint">بعد از این مدت، کش‌بکِ خرج‌نشده خودکار از کیف پول کم می‌شه. پولی که خود مشتری شارژ کرده و هدیه‌های شارژ و دعوت هیچ‌وقت نمی‌سوزن. پیشنهاد: ۱۴.</div>
-      </div>
-      <div class="btn-row mt-16">
-        <button class="btn btn-dark" id="settings-cancel">انصراف</button>
-        <button class="btn btn-primary" id="settings-save">ذخیره تنظیمات</button>
-      </div>
-    </div>
-  </div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/lamejs@1.2.1/lame.min.js"></script>
+<script src="js/config.js"></script>
+<script src="js/app.js"></script>
+<script>
+  if (sessionStorage.getItem("hayk_admin_auth") !== "1") {
+    location.href = "admin.html";
+  }
 
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="js/config.js"></script>
-  <script src="js/app.js"></script>
-  <script src="js/golden.js"></script>
-  <script>
-    if (sessionStorage.getItem("hayk_admin_auth") !== "1") {
-      window.location.href = "staff-admin.html";
+  const BUCKET = "radio";
+  const MAX = 50 * 1024 * 1024;
+  let tracks = [];
+  let preview = null;
+
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+  async function loadTracks() {
+    const { data, error } = await supabaseClient
+      .from("radio_tracks").select("*").order("created_at", { ascending: true });
+    if (error) {
+      $("list").innerHTML = '<p class="x-hint">خطا در خواندن لیست. مطمئن بشید radio.sql رو در Supabase اجرا کردید.<br>' + esc(error.message) + "</p>";
+      return;
     }
+    tracks = data || [];
+    render();
+  }
 
-    document.getElementById("logout-btn").addEventListener("click", () => {
-      sessionStorage.removeItem("hayk_admin_auth");
-      window.location.href = "index.html";
-    });
+  function render() {
+    $("count").textContent = tracks.length ? "(" + tracks.length + " آهنگ)" : "";
+    if (!tracks.length) { $("list").innerHTML = '<p class="x-hint">هنوز آهنگی اضافه نشده.</p>'; return; }
+    $("list").innerHTML = tracks.map((t, i) => `
+      <div class="tr ${t.active ? "" : "off"}" data-id="${t.id}">
+        <span class="n">${i + 1}</span>
+        <input type="text" class="col2" data-f="title" value="${esc(t.title)}" placeholder="اسم آهنگ" />
+        <input type="text" class="col2" data-f="artist" value="${esc(t.artist)}" placeholder="خواننده" />
+        <button class="btn btn-outline btn-sm" data-a="play">▶</button>
+        <button class="btn btn-outline btn-sm" data-a="toggle">${t.active ? "خاموش" : "روشن"}</button>
+        <button class="btn btn-dark btn-sm" data-a="del">حذف</button>
+      </div>`).join("");
+  }
 
-    let allCustomers = [];
-    let customerTiers = [];
+  $("list").addEventListener("change", async (e) => {
+    const row = e.target.closest(".tr"); if (!row || !e.target.dataset.f) return;
+    const { error } = await supabaseClient.from("radio_tracks")
+      .update({ [e.target.dataset.f]: e.target.value.trim() }).eq("id", row.dataset.id);
+    showToast(error ? "ذخیره نشد: " + error.message : "ذخیره شد");
+  });
 
-    async function loadCustomers() {
-      await burnExpiredCashback();
-      customerTiers = await getCustomerTiers();
-      const { data, error } = await supabaseClient
-        .from("customers")
-        .select("*")
-        .order("created_at", { ascending: false });
-      if (error) {
-        showToast("خطا در بارگذاری لیست", true);
-        console.error(error);
-        return;
-      }
-      allCustomers = data || [];
-      renderStats();
-      renderTable(allCustomers);
+  $("list").addEventListener("click", async (e) => {
+    const btn = e.target.closest("button[data-a]"); if (!btn) return;
+    const row = btn.closest(".tr"); const t = tracks.find((x) => x.id === row.dataset.id); if (!t) return;
+    if (btn.dataset.a === "play") {
+      if (preview) preview.pause();
+      preview = new Audio(t.audio_url); preview.play().catch(() => showToast("پخش نشد"));
     }
-
-    function renderStats() {
-      const total = allCustomers.length;
-      const totalDrinks = allCustomers.reduce((s, c) => s + (c.total_drinks || 0), 0);
-      const totalFree = allCustomers.reduce((s, c) => s + (c.free_drinks_redeemed || 0), 0);
-      document.getElementById("stats-row").innerHTML = `
-        <div class="stat-box"><div class="num">${total}</div><div class="cap">کل مشتری‌ها</div></div>
-        <div class="stat-box"><div class="num">${totalDrinks}</div><div class="cap">کل نوشیدنی‌های فروخته‌شده</div></div>
-        <div class="stat-box"><div class="num">${totalFree}</div><div class="cap">کل نوشیدنی‌های رایگان اهدایی</div></div>
-      `;
+    if (btn.dataset.a === "toggle") {
+      const { error } = await supabaseClient.from("radio_tracks").update({ active: !t.active }).eq("id", t.id);
+      if (error) return showToast(error.message);
+      t.active = !t.active; render();
     }
-
-    function renderTable(list) {
-      const tbody = document.getElementById("table-body");
-      tbody.innerHTML = "";
-      document.getElementById("empty-msg").style.display = list.length ? "none" : "block";
-
-      for (const c of list) {
-        const tr = document.createElement("tr");
-        const ready = c.drink_count >= DRINKS_FOR_FREE;
-        const tier = computeCustomerTier(c.total_drinks, customerTiers);
-        tr.innerHTML = `
-          <td data-label="نام">${escapeHtml(c.name)}</td>
-          <td data-label="موبایل">${escapeHtml(c.phone)}</td>
-          <td data-label="پیشرفت"><span class="badge ${ready ? "ready" : ""}">${c.drink_count} / ${DRINKS_FOR_FREE}${ready ? " 🎁" : ""}</span></td>
-          <td data-label="کل نوشیدنی">${c.total_drinks || 0}</td>
-          <td data-label="رایگان دریافتی">${c.free_drinks_redeemed || 0}</td>
-          <td data-label="سطح"><span style="color:${tier.color}; font-weight:700;">${tier.icon} ${tier.name}</span></td>
-          <td data-label="کیف پول">${formatToman(c.wallet_balance || 0)}</td>
-          <td data-label="حضور پیوسته">${c.visit_streak >= 2 ? `🔥 ${c.visit_streak}` : "—"}</td>
-          <td data-label="عضویت">${fmtDate(c.created_at)}</td>
-          <td data-label="عملیات">
-            <button class="icon-btn" title="کم کردن نوشیدنی" data-act="minus" data-id="${c.id}">−</button>
-            <button class="icon-btn" title="اضافه کردن نوشیدنی" data-act="plus" data-id="${c.id}">+</button>
-            <button class="icon-btn" title="ویرایش" data-act="edit" data-id="${c.id}">✎</button>
-            <button class="icon-btn danger" title="حذف" data-act="delete" data-id="${c.id}">🗑</button>
-          </td>
-        `;
-        tbody.appendChild(tr);
-      }
+    if (btn.dataset.a === "del") {
+      if (!confirm("«" + t.title + "» حذف بشه؟")) return;
+      await supabaseClient.storage.from(BUCKET).remove([t.storage_path]);
+      const { error } = await supabaseClient.from("radio_tracks").delete().eq("id", t.id);
+      if (error) return showToast(error.message);
+      tracks = tracks.filter((x) => x.id !== t.id); render(); showToast("حذف شد");
     }
+  });
 
-    function escapeHtml(str) {
-      const d = document.createElement("div");
-      d.textContent = str ?? "";
-      return d.innerHTML;
+  // فشرده‌سازی به MP3 داخل مرورگر
+  async function compressToMp3(file, kbps, mono, onProgress) {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    const ctx = new AC();
+    let buf;
+    try { buf = await ctx.decodeAudioData(await file.arrayBuffer()); } finally { ctx.close && ctx.close(); }
+    const ch = mono ? 1 : Math.min(2, buf.numberOfChannels);
+    const rate = buf.sampleRate;
+    const L = buf.getChannelData(0);
+    const R = ch === 2 ? buf.getChannelData(1) : null;
+    const toI16 = (f, i0, i1) => { const o = new Int16Array(i1 - i0); for (let i = i0; i < i1; i++) { const v = Math.max(-1, Math.min(1, f[i])); o[i - i0] = v < 0 ? v * 0x8000 : v * 0x7fff; } return o; };
+    let M = L;
+    if (mono && buf.numberOfChannels > 1) { const R0 = buf.getChannelData(1); M = new Float32Array(L.length); for (let i = 0; i < L.length; i++) M[i] = (L[i] + R0[i]) / 2; }
+    const enc = new lamejs.Mp3Encoder(ch, rate, kbps);
+    const out = []; const step = 1152 * 20;
+    for (let i = 0; i < L.length; i += step) {
+      const end = Math.min(i + step, L.length);
+      const d = ch === 2 ? enc.encodeBuffer(toI16(L, i, end), toI16(R, i, end)) : enc.encodeBuffer(toI16(M, i, end));
+      if (d.length) out.push(new Uint8Array(d));
+      if ((i / step) % 8 === 0) { onProgress(i / L.length); await new Promise((r) => setTimeout(r, 0)); }
     }
+    const tail = enc.flush(); if (tail.length) out.push(new Uint8Array(tail));
+    return new Blob(out, { type: "audio/mpeg" });
+  }
 
-    document.getElementById("table-body").addEventListener("click", async (e) => {
-      const btn = e.target.closest("button[data-act]");
-      if (!btn) return;
-      const id = btn.dataset.id;
-      const act = btn.dataset.act;
-      const customer = allCustomers.find((c) => c.id === id);
-      if (!customer) return;
+  async function uploadFiles(files) {
+    for (const file of files) {
+      const row = document.createElement("div");
+      row.className = "up-row";
+      row.innerHTML = `<span style="flex:0 0 40%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(file.name)}</span><div class="bar"><i></i></div><span class="st">در صف…</span>`;
+      $("uploads").prepend(row);
+      const st = row.querySelector(".st"), bar = row.querySelector("i");
 
-      if (act === "plus" || act === "minus") {
-        await quickAdjust(customer, act === "plus" ? 1 : -1);
-      } else if (act === "edit") {
-        openEdit(customer);
-      } else if (act === "delete") {
-        if (confirm(`مشتری «${customer.name}» حذف بشه؟ این عمل قابل بازگشت نیست.`)) {
-          const { error } = await supabaseClient.from("customers").delete().eq("id", id);
-          if (error) { showToast("خطا در حذف", true); return; }
-          showToast("مشتری حذف شد");
-          loadCustomers();
+      if (!file.type.startsWith("audio/") && !/\.(mp3|m4a|aac|ogg|wav|flac)$/i.test(file.name)) { st.textContent = "فرمت صوتی نیست"; continue; }
+      if (file.size > MAX) { st.textContent = "بیشتر از ۵۰ مگابایت"; continue; }
+
+      let body = file, ctype = file.type || "audio/mpeg";
+      let ext = (file.name.split(".").pop() || "mp3").toLowerCase().replace(/[^a-z0-9]/g, "") || "mp3";
+      const q = $("q").value;
+      if (q !== "0" && window.lamejs) {
+        const kbps = parseInt(q, 10), mono = q.endsWith("m");
+                // اگه فایل از قبل کم‌حجمه، فشرده‌سازی لازم نیست (۳ مگ ≈ ۱۲۸ کیلوبیت برای ۳.۵ دقیقه)
+        const smallLimit = kbps * 125 * 240; // حدود ۴ دقیقه با همون نرخ
+        if (file.size > smallLimit) {
+          try {
+            st.textContent = "در حال فشرده‌سازی…";
+            const blob = await compressToMp3(file, kbps, mono, (p) => { bar.style.width = Math.round(p * 40) + "%"; st.textContent = "فشرده‌سازی " + Math.round(p * 100) + "٪"; });
+            if (blob.size < file.size) { body = blob; ctype = "audio/mpeg"; ext = "mp3"; }
+          } catch (err) { console.warn(err); st.textContent = "فشرده نشد، فایل اصلی آپلود می‌شه…"; }
         }
       }
-    });
+      if (body.size > MAX) { st.textContent = "بعد از فشرده‌سازی هم بیشتر از ۵۰ مگابایته"; continue; }
+      const path = Date.now() + "_" + Math.random().toString(36).slice(2, 8) + "." + ext;
+      
 
-    function computeStreak(lastVisitDate, currentStreak) {
-      const today = new Date();
-      const todayStr = today.toISOString().slice(0, 10);
-      if (lastVisitDate === todayStr) {
-        return { last_visit_date: lastVisitDate, visit_streak: currentStreak || 0 };
-      }
-      const yesterday = new Date(today);
-      yesterday.setDate(yesterday.getDate() - 1);
-      const yesterdayStr = yesterday.toISOString().slice(0, 10);
-      const newStreak = lastVisitDate === yesterdayStr ? (currentStreak || 0) + 1 : 1;
-      return { last_visit_date: todayStr, visit_streak: newStreak };
+      st.textContent = "در حال آپلود (" + (body.size / 1048576).toFixed(1) + " مگابایت)…"; bar.style.width = "50%";
+      const up = await supabaseClient.storage.from(BUCKET).upload(path, body, { contentType: ctype, cacheControl: "31536000" });
+      if (up.error) { st.textContent = "خطا: " + up.error.message; continue; }
+      bar.style.width = "85%";
+
+      const url = supabaseClient.storage.from(BUCKET).getPublicUrl(path).data.publicUrl;
+      const title = file.name.replace(/\.[^.]+$/, "").replace(/[_]+/g, " ").trim();
+      const ins = await supabaseClient.from("radio_tracks").insert({ title, artist: "", audio_url: url, storage_path: path });
+      if (ins.error) { await supabaseClient.storage.from(BUCKET).remove([path]); st.textContent = "خطا: " + ins.error.message; continue; }
+      bar.style.width = "100%"; st.textContent = "✓ اضافه شد";
     }
+    await loadTracks();
+  }
 
-    async function quickAdjust(customer, delta) {
-      // همیشه با تازه‌ترین اطلاعات مشتری کار می‌کنیم
-      try {
-        const fresh = await fetchCustomerById(customer.id);
-        if (fresh) customer = fresh;
-      } catch (e) { console.error(e); }
-      const golden = await getGoldenHour();
-      let { drink_count, total_drinks, free_drinks_redeemed, last_visit_date, visit_streak, wallet_balance } = customer;
-      wallet_balance = wallet_balance || 0;
-      let goldenBonus = null;
-      if (delta > 0) {
-        if (drink_count >= DRINKS_FOR_FREE) {
-          free_drinks_redeemed = (free_drinks_redeemed || 0) + 1;
-          drink_count = 0;
-        } else {
-          const g = goldenAdjust(golden, drink_count, wallet_balance);
-          drink_count = g.drink_count;
-          wallet_balance = g.wallet_balance;
-          goldenBonus = g.bonus;
-        }
-        total_drinks = (total_drinks || 0) + 1;
-        const streakUpdate = computeStreak(last_visit_date, visit_streak);
-        last_visit_date = streakUpdate.last_visit_date;
-        visit_streak = streakUpdate.visit_streak;
-      } else {
-        if (drink_count > 0) {
-          drink_count -= 1;
-          total_drinks = Math.max(0, (total_drinks || 0) - 1);
-        } else if (free_drinks_redeemed > 0) {
-          free_drinks_redeemed -= 1;
-          drink_count = DRINKS_FOR_FREE;
-          total_drinks = Math.max(0, (total_drinks || 0) - 1);
-        }
-      }
-      const { error } = await supabaseClient
-        .from("customers")
-        .update({ drink_count, total_drinks, free_drinks_redeemed, last_visit_date, visit_streak, wallet_balance })
-        .eq("id", customer.id);
-      if (error) { showToast("خطا در بروزرسانی", true); return; }
-      if (delta > 0) {
-        if (goldenBonus && goldenBonus.type === "wallet") {
-          await recordCashbackGrant(customer.id, goldenBonus.amount, golden);
-        }
-        supabaseClient.from("visit_log").insert({ customer_id: customer.id }).then(() => {});
-        showToast(goldenToastText(goldenBonus));
-      }
-      loadCustomers();
-    }
+  $("file").addEventListener("change", (e) => { uploadFiles([...e.target.files]); e.target.value = ""; });
+  const drop = $("drop");
+  ["dragenter", "dragover"].forEach((ev) => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.add("over"); }));
+  ["dragleave", "drop"].forEach((ev) => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.remove("over"); }));
+  drop.addEventListener("drop", (e) => uploadFiles([...e.dataTransfer.files]));
 
-    // ---- edit modal ----
-    const editModal = document.getElementById("edit-modal");
-    let editingId = null;
-
-    function openEdit(c) {
-      editingId = c.id;
-      document.getElementById("e-name").value = c.name;
-      document.getElementById("e-phone").value = c.phone;
-      document.getElementById("e-pin").value = c.pin || "";
-      document.getElementById("e-drinks").value = c.drink_count;
-      document.getElementById("e-total").value = c.total_drinks || 0;
-      document.getElementById("e-free").value = c.free_drinks_redeemed || 0;
-      document.getElementById("e-wallet").value = c.wallet_balance || 0;
-      hideFormMsg(document.getElementById("edit-msg"));
-      editModal.classList.add("show");
-    }
-    document.getElementById("edit-cancel").addEventListener("click", () => editModal.classList.remove("show"));
-    document.getElementById("edit-save").addEventListener("click", async () => {
-      const msg = document.getElementById("edit-msg");
-      const name = document.getElementById("e-name").value.trim();
-      const phone = normalizePhone(document.getElementById("e-phone").value);
-      const pinRaw = document.getElementById("e-pin").value.trim();
-      const drink_count = parseInt(document.getElementById("e-drinks").value, 10) || 0;
-      const total_drinks = parseInt(document.getElementById("e-total").value, 10) || 0;
-      const free_drinks_redeemed = parseInt(document.getElementById("e-free").value, 10) || 0;
-      const wallet_balance = parseInt(document.getElementById("e-wallet").value, 10) || 0;
-
-      if (!name || !phone) { showFormMsg(msg, "نام و موبایل نمی‌تونن خالی باشن."); return; }
-      if (pinRaw && !/^\d{4}$/.test(pinRaw)) { showFormMsg(msg, "کد باید دقیقاً ۴ رقم باشه یا کاملاً خالی."); return; }
-
-      const { error } = await supabaseClient
-        .from("customers")
-        .update({ name, phone, pin: pinRaw || null, drink_count, total_drinks, free_drinks_redeemed, wallet_balance })
-        .eq("id", editingId);
-      if (error) {
-        showFormMsg(msg, error.message.includes("duplicate") ? "این شماره موبایل قبلاً ثبت شده." : "خطا در ذخیره‌سازی.");
-        return;
-      }
-      editModal.classList.remove("show");
-      showToast("تغییرات ذخیره شد");
-      loadCustomers();
-    });
-
-    // ---- settings modal ----
-    const settingsModal = document.getElementById("settings-modal");
-    const goldenDaysBox = document.getElementById("s-golden-days");
-    goldenDaysBox.innerHTML = GOLDEN_WEEK_ORDER.map((d) =>
-      `<label><input type="checkbox" value="${d}" /> ${GOLDEN_DAY_NAMES[d]}</label>`).join("");
-    function toggleGoldenBonusField() {
-      const isWallet = document.getElementById("s-golden-type").value === "wallet";
-      document.getElementById("golden-bonus-field").style.display = isWallet ? "block" : "none";
-      document.getElementById("golden-expire-field").style.display = isWallet ? "block" : "none";
-    }
-    document.getElementById("s-golden-type").addEventListener("change", toggleGoldenBonusField);
-
-    document.getElementById("settings-btn").addEventListener("click", async () => {
-      hideFormMsg(document.getElementById("settings-msg"));
-      const [staffPass, adminUser, adminPass, cardNumber, cardHolder, referralBonus, tiersRaw, firstTopupThreshold, firstTopupBonus, custTiersRaw] = await Promise.all([
-        getSetting("staff_password"),
-        getSetting("admin_username"),
-        getSetting("admin_password"),
-        getSetting("bank_card_number"),
-        getSetting("bank_card_holder"),
-        getSetting("referral_bonus_amount"),
-        getSetting("wallet_topup_tiers"),
-        getSetting("first_topup_bonus_threshold"),
-        getSetting("first_topup_referral_bonus"),
-        getSetting("customer_tiers"),
-      ]);
-      document.getElementById("s-staff-pass").value = staffPass || "";
-      document.getElementById("s-admin-user").value = adminUser || "";
-      document.getElementById("s-admin-pass").value = adminPass || "";
-      document.getElementById("s-card-number").value = cardNumber || "";
-      document.getElementById("s-card-holder").value = cardHolder || "";
-      document.getElementById("s-referral-bonus").value = referralBonus || "20000";
-      document.getElementById("s-first-topup-threshold").value = firstTopupThreshold || "500000";
-      document.getElementById("s-first-topup-bonus").value = firstTopupBonus || "20000";
-
-      let tiers = defaultWalletTiers();
-      try {
-        const parsed = JSON.parse(tiersRaw || "");
-        if (Array.isArray(parsed) && parsed.length) tiers = parsed;
-      } catch {}
-      const sortedTiers = [...tiers].sort((a, b) => b.min - a.min);
-      document.getElementById("s-tier1-min").value = sortedTiers[0]?.min ?? "";
-      document.getElementById("s-tier1-percent").value = sortedTiers[0]?.bonusPercent ?? "";
-      document.getElementById("s-tier2-min").value = sortedTiers[1]?.min ?? "";
-      document.getElementById("s-tier2-percent").value = sortedTiers[1]?.bonusPercent ?? "";
-      document.getElementById("s-tier3-min").value = sortedTiers[2]?.min ?? "";
-      document.getElementById("s-tier3-percent").value = sortedTiers[2]?.bonusPercent ?? "";
-
-      let custTiers = defaultCustomerTiers();
-      try {
-        const parsedCust = JSON.parse(custTiersRaw || "");
-        if (Array.isArray(parsedCust) && parsedCust.length) custTiers = parsedCust;
-      } catch {}
-      const sortedCustTiers = [...custTiers].sort((a, b) => a.min - b.min);
-      document.getElementById("s-tier-silver-min").value = sortedCustTiers[1]?.min ?? 50;
-      document.getElementById("s-tier-gold-min").value = sortedCustTiers[2]?.min ?? 150;
-
-      const gh = await getGoldenHour();
-      document.getElementById("s-golden-enabled").value = gh.enabled ? "1" : "0";
-      goldenDaysBox.querySelectorAll("input").forEach((cb) => { cb.checked = gh.days.includes(Number(cb.value)); });
-      document.getElementById("s-golden-start").value = gh.start;
-      document.getElementById("s-golden-end").value = gh.end;
-      document.getElementById("s-golden-type").value = gh.rewardType;
-      document.getElementById("s-golden-bonus").value = gh.walletBonus;
-      document.getElementById("s-golden-expire").value = gh.cashbackExpireDays;
-      toggleGoldenBonusField();
-
-      settingsModal.classList.add("show");
-    });
-    document.getElementById("settings-cancel").addEventListener("click", () => settingsModal.classList.remove("show"));
-    document.getElementById("settings-save").addEventListener("click", async () => {
-      const msg = document.getElementById("settings-msg");
-      const staffPass = document.getElementById("s-staff-pass").value.trim();
-      const adminUser = document.getElementById("s-admin-user").value.trim();
-      const adminPass = document.getElementById("s-admin-pass").value.trim();
-      const cardNumber = document.getElementById("s-card-number").value.trim();
-      const cardHolder = document.getElementById("s-card-holder").value.trim();
-      const referralBonus = document.getElementById("s-referral-bonus").value.trim();
-      const firstTopupThreshold = document.getElementById("s-first-topup-threshold").value.trim();
-      const firstTopupBonus = document.getElementById("s-first-topup-bonus").value.trim();
-
-      const tiers = [
-        { min: parseInt(document.getElementById("s-tier1-min").value, 10) || 0, bonusPercent: parseInt(document.getElementById("s-tier1-percent").value, 10) || 0 },
-        { min: parseInt(document.getElementById("s-tier2-min").value, 10) || 0, bonusPercent: parseInt(document.getElementById("s-tier2-percent").value, 10) || 0 },
-        { min: parseInt(document.getElementById("s-tier3-min").value, 10) || 0, bonusPercent: parseInt(document.getElementById("s-tier3-percent").value, 10) || 0 },
-      ].filter((t) => t.min > 0);
-
-      const silverMin = parseInt(document.getElementById("s-tier-silver-min").value, 10) || 50;
-      const goldMin = parseInt(document.getElementById("s-tier-gold-min").value, 10) || 150;
-      const customerTiersToSave = [
-        { min: 0, name: "برنزی", icon: "🥉", color: "#c08552" },
-        { min: silverMin, name: "نقره‌ای", icon: "🥈", color: "#b8c0c8" },
-        { min: goldMin, name: "طلایی", icon: "🥇", color: "#d4a054" },
-      ];
-
-      if (!staffPass || !adminUser || !adminPass) {
-        showFormMsg(msg, "همه فیلدها الزامی هستن.");
-        return;
-      }
-
-      // ساعت طلایی
-      const gEnabled = document.getElementById("s-golden-enabled").value === "1";
-      const gDays = Array.from(goldenDaysBox.querySelectorAll("input:checked")).map((cb) => Number(cb.value));
-      const gStart = document.getElementById("s-golden-start").value;
-      const gEnd = document.getElementById("s-golden-end").value;
-      const gType = document.getElementById("s-golden-type").value === "double" ? "double" : "wallet";
-      const gBonus = parseInt(document.getElementById("s-golden-bonus").value, 10) || 0;
-      const gExpire = Math.max(0, parseInt(document.getElementById("s-golden-expire").value, 10) || 0);
-      if (gEnabled) {
-        if (!gDays.length) { showFormMsg(msg, "برای ساعت طلایی حداقل یک روز انتخاب کنید."); return; }
-        if (!gStart || !gEnd || gStart >= gEnd) { showFormMsg(msg, "ساعت شروع ساعت طلایی باید قبل از ساعت پایانش باشه."); return; }
-        if (gType === "wallet" && gBonus <= 0) { showFormMsg(msg, "مبلغ هدیه ساعت طلایی باید بیشتر از صفر باشه."); return; }
-      }
-      const goldenToSave = {
-        enabled: gEnabled,
-        days: gDays.length ? gDays : defaultGoldenHour().days,
-        start: gStart || "19:00",
-        end: gEnd || "21:00",
-        rewardType: gType,
-        walletBonus: gBonus > 0 ? gBonus : 5000,
-        cashbackExpireDays: gExpire,
-      };
-      try {
-        await Promise.all([
-          setSetting("staff_password", staffPass),
-          setSetting("admin_username", adminUser),
-          setSetting("admin_password", adminPass),
-          setSetting("bank_card_number", cardNumber),
-          setSetting("bank_card_holder", cardHolder),
-          setSetting("referral_bonus_amount", referralBonus || "0"),
-          setSetting("wallet_topup_tiers", JSON.stringify(tiers)),
-          setSetting("first_topup_bonus_threshold", firstTopupThreshold || "0"),
-          setSetting("first_topup_referral_bonus", firstTopupBonus || "0"),
-          setSetting("customer_tiers", JSON.stringify(customerTiersToSave)),
-          setSetting("golden_hour", JSON.stringify(goldenToSave)),
-        ]);
-        settingsModal.classList.remove("show");
-        showToast("تنظیمات ذخیره شد");
-        customerTiers = customerTiersToSave;
-        renderTable(allCustomers);
-      } catch (err) {
-        console.error(err);
-        showFormMsg(msg, "خطا در ذخیره‌سازی تنظیمات.");
-      }
-    });
-
-    // ---- search ----
-    document.getElementById("search").addEventListener("input", (e) => {
-      const q = e.target.value.trim().toLowerCase();
-      if (!q) { renderTable(allCustomers); return; }
-      renderTable(
-        allCustomers.filter(
-          (c) => c.name.toLowerCase().includes(q) || c.phone.includes(q)
-        )
-      );
-    });
-
-    document.getElementById("refresh-btn").addEventListener("click", loadCustomers);
-
-    loadCustomers();
-  </script>
+  loadTracks();
+</script>
 </body>
 </html>
