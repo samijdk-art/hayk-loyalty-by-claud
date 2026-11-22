@@ -29,6 +29,7 @@
           <a href="bg-admin.html" class="btn btn-outline btn-sm">🖼️ پس‌زمینه</a>
           <a href="radio-admin.html" class="btn btn-outline btn-sm">🎵 رادیو</a>
           <button class="btn btn-outline btn-sm" id="settings-btn">⚙️ تنظیمات</button>
+          <button class="btn btn-outline btn-sm" id="backup-btn">💾 بک‌آپ</button>
           <button class="btn btn-dark btn-sm" id="logout-btn">خروج</button>
         </div>
       </div>
@@ -528,6 +529,45 @@
     document.getElementById("refresh-btn").addEventListener("click", loadCustomers);
 
     loadCustomers();
+  
+    // ---------- بک‌آپ کامل: همهٔ جدول‌ها در یک فایل ----------
+    (function () {
+      const KNOWN = ["customers", "wallet_topups", "visit_log", "app_settings", "bg_images", "cashback_grants", "radio_tracks", "radio_stations", "menu_categories", "menu_items"];
+      const btn = document.getElementById("backup-btn");
+      async function fetchAll(table) {
+        const rows = []; const PAGE = 1000;
+        for (let from = 0; ; from += PAGE) {
+          const { data, error } = await supabaseClient.from(table).select("*").range(from, from + PAGE - 1);
+          if (error) throw error;
+          rows.push(...(data || []));
+          if (!data || data.length < PAGE) break;
+        }
+        return rows;
+      }
+      btn.addEventListener("click", async () => {
+        btn.disabled = true; const old = btn.textContent;
+        const out = { app: "HAYK Loyalty Club", created_at: new Date().toISOString(), tables: {} };
+        const skipped = [];
+        try {
+          for (let i = 0; i < KNOWN.length; i++) {
+            btn.textContent = "در حال گرفتن… " + (i + 1) + "/" + KNOWN.length;
+            try { out.tables[KNOWN[i]] = await fetchAll(KNOWN[i]); }
+            catch (e) { skipped.push(KNOWN[i]); }
+          }
+          const names = Object.keys(out.tables);
+          if (!names.length) { showToast("بک‌آپ گرفته نشد. اتصال به سرور رو چک کنید."); return; }
+          const blob = new Blob([JSON.stringify(out, null, 2)], { type: "application/json" });
+          const d = new Date(), pad = (n) => String(n).padStart(2, "0");
+          const name = "hayk-backup-" + d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()) + ".json";
+          const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = name;
+          document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+          const total = names.reduce((n, k) => n + out.tables[k].length, 0);
+          alert("بک‌آپ گرفته شد: " + name + "\n" + names.length + " جدول، " + total + " ردیف" +
+            (skipped.length ? "\n\nجدول‌هایی که پیدا نشدن (مشکلی نیست، احتمالاً وجود ندارن):\n" + skipped.join(", ") : "") +
+            "\n\nاین فایل شامل اطلاعات مشتری‌ها و رمزهاست؛ جای امن نگهش دارید.");
+        } finally { btn.disabled = false; btn.textContent = old; }
+      });
+    })();
   </script>
 </body>
 </html>
