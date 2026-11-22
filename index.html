@@ -44,6 +44,12 @@
     background:rgba(29,17,10,.86); backdrop-filter:blur(10px); border-radius:999px; box-shadow:0 14px 40px -10px rgba(0,0,0,.6); width:min(92vw,420px); }
   .dock a{ flex:1; text-align:center; padding:12px 8px; border-radius:999px; font-size:14px; font-weight:800; color:var(--cream); text-decoration:none; }
   .dock a.primary{ background:var(--terra); }
+  .radio-pill{ position:fixed; z-index:25; top:64px; left:22px; display:inline-flex; align-items:center; gap:6px; padding:8px 13px; border-radius:999px;
+    background:rgba(29,17,10,.82); backdrop-filter:blur(8px); color:var(--cream); font-size:12px; font-weight:800; text-decoration:none;
+    box-shadow:0 8px 22px -8px rgba(0,0,0,.55); border:1px solid rgba(242,231,214,.18); }
+  .radio-pill{ transition:top .25s ease; }
+  .radio-pill.up{ top:14px; }
+  .radio-pill:focus-visible{ outline:3px solid var(--crema); outline-offset:2px; }
 
   /* ---------- انیمیشن‌های همیشه‌روشن ---------- */
   .shake{ animation:shake .22s linear infinite; transform-origin:150px 380px; }
@@ -254,6 +260,8 @@
     </footer>
   </main>
 
+  <a href="radio.html" class="radio-pill" aria-label="رادیوی HAYK">🎵 رادیو</a>
+
   <nav class="dock" aria-label="دسترسی سریع">
     <a href="join.html" class="primary">عضویت</a>
     <a href="login.html">ورود</a>
@@ -264,6 +272,9 @@
   <script src="js/config.js"></script>
   <script src="js/app.js"></script>
   <script src="js/golden.js"></script>
+  <script>
+    (function(){ var rp=document.querySelector(".radio-pill"); function f(){ rp.classList.toggle("up", window.scrollY>90); } addEventListener("scroll",f,{passive:true}); f(); })();
+  </script>
   <script>
     // ---------- اسلاید پس‌زمینه (از پنل ادمین) — پشت بخش عضویت ----------
     async function loadBackgroundSlideshow() {
