@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>مدیریت رادیو — HAYK</title>
+<link rel="stylesheet" href="css/styles.css" />
+<style>
+  .drop{border:2px dashed rgba(212,160,84,.4);border-radius:16px;padding:28px 16px;text-align:center;cursor:pointer;background:rgba(255,255,255,.03);transition:.2s;}
+  .drop.over{background:rgba(212,160,84,.12);border-color:#d4a054;}
+  .drop b{display:block;font-size:16px;margin-bottom:6px;}
+  .drop span{font-size:12px;color:#a89a8c;}
+  .up-row{display:flex;align-items:center;gap:10px;font-size:13px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.06);}
+  .up-row .bar{flex:1;height:6px;border-radius:6px;background:rgba(255,255,255,.1);overflow:hidden;}
+  .up-row .bar i{display:block;height:100%;width:0;background:#d4a054;transition:width .2s;}
+  .tr{display:grid;grid-template-columns:auto 1fr 1fr auto auto auto;gap:8px;align-items:center;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.06);}
+  .tr input[type=text]{width:100%;padding:8px 10px;border-radius:10px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.05);color:inherit;font:inherit;font-size:13px;}
+  .tr.off{opacity:.45;}
+  .tr .n{font-size:12px;color:#a89a8c;min-width:22px;text-align:center;}
+  .x-hint{font-size:12px;color:#a89a8c;line-height:1.9;}
+  @media(max-width:640px){.tr{grid-template-columns:auto 1fr auto;}.tr .col2{grid-column:2 / 4;}}
+</style>
+</head>
+<body>
+<main class="page page-wide">
+  <div class="card">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px;margin-bottom:8px;">
+      <div class="brand-top" style="align-items:flex-start;margin-bottom:0;">
+        <div class="brand-eyebrow">HAYK — مدیریت رادیو</div>
+      </div>
+      <div class="btn-row">
+        <a href="radio.html" target="_blank" class="btn btn-primary btn-sm">▶ باز کردن رادیو</a>
+        <a href="admin.html" class="btn btn-outline btn-sm">← پنل مدیریت</a>
+      </div>
+    </div>
+
+    <p class="x-hint mt-16">
+      فقط آهنگ‌هایی رو آپلود کنید که حق پخشش در کافه رو دارید (موسیقی بدون کپی‌رایت یا لایسنس‌شده).
+      فرمت‌های mp3 / m4a / ogg / wav — حداکثر ۵۰ مگابایت برای هر فایل.
+    </p>
+
+    <div class="field mt-16" style="max-width:420px;">
+      <label for="q">کیفیت و حجم (فشرده‌سازی خودکار قبل از آپلود)</label>
+      <select id="q" style="background:#1b120b;color:#f6f1e8;">
+        <option value="128">۱۲۸ — پیشنهادی (حدود ۳ مگابایت برای هر آهنگ)</option>
+        <option value="96">۹۶ — کم‌حجم‌تر (حدود ۲.۳ مگابایت)</option>
+        <option value="64m">۶۴ مونو — خیلی کم‌حجم (حدود ۱.۵ مگابایت)</option>
+        <option value="0">بدون فشرده‌سازی (فایل اصلی)</option>
+      </select>
+      <div class="x-hint">فایل‌هایی که از قبل کم‌حجم باشن، همون‌طور که هستن آپلود می‌شن. فشرده‌سازی روی دستگاه خودتون انجام می‌شه و برای هر آهنگ چند ثانیه طول می‌کشه؛ هنگام آپلود صفحه رو نبندید.</div>
+    </div>
+
+    <label class="drop mt-16" id="drop">
+      <b>🎵 فایل‌های موسیقی رو اینجا بندازید یا لمس کنید</b>
+      <span>می‌تونید چند فایل رو با هم انتخاب کنید</span>
+      <input type="file" id="file" accept="audio/*" multiple hidden />
+    </label>
+    <div id="uploads" class="mt-16"></div>
+
+    <h3 class="mt-24" style="margin-bottom:4px;">📻 رادیوهای آنلاین</h3>
+    <p class="x-hint">لینک استریم مستقیم (معمولاً با پسوند .mp3 / .aac یا آدرس شنود رادیو) رو بذارید. لینک باید با https شروع بشه. دکمهٔ «تست» رو بزنید تا مطمئن بشید پخش می‌شه.</p>
+    <div class="tr" style="grid-template-columns:1fr 2fr auto;margin-top:10px;">
+      <input type="text" id="st-name" placeholder="اسم رادیو" />
+      <input type="text" id="st-url" placeholder="https://…/stream" style="direction:ltr;" />
+      <button class="btn btn-primary btn-sm" id="st-add">افزودن</button>
+    </div>
+    <div id="stations" class="mt-16"></div>
+
+    <h3 class="mt-24" style="margin-bottom:4px;">لیست آهنگ‌ها <span id="count" class="x-hint"></span></h3>
+    <p class="x-hint">اسم و خواننده رو می‌تونید ویرایش کنید؛ با خاموش کردن، آهنگ بدون حذف از رادیو بیرون می‌ره.</p>
+    <div id="list" class="mt-16"></div>
+  </div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/lamejs@1.2.1/lame.min.js"></script>
+<script src="js/config.js"></script>
+<script src="js/app.js"></script>
+<script>
+  if (sessionStorage.getItem("hayk_admin_auth") !== "1") {
+    location.href = "admin.html";
+  }
+
+  const BUCKET = "radio";
+  const MAX = 50 * 1024 * 1024;
+  let tracks = [];
+  let preview = null;
+
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+  async function loadTracks() {
+    const { data, error } = await supabaseClient
+      .from("radio_tracks").select("*").order("created_at", { ascending: true });
+    if (error) {
+      $("list").innerHTML = '<p class="x-hint">خطا در خواندن لیست. مطمئن بشید radio.sql رو در Supabase اجرا کردید.<br>' + esc(error.message) + "</p>";
+      return;
+    }
+    tracks = data || [];
+    render();
+  }
+
+  function render() {
+    $("count").textContent = tracks.length ? "(" + tracks.length + " آهنگ)" : "";
+    if (!tracks.length) { $("list").innerHTML = '<p class="x-hint">هنوز آهنگی اضافه نشده.</p>'; return; }
+    $("list").innerHTML = tracks.map((t, i) => `
+      <div class="tr ${t.active ? "" : "off"}" data-id="${t.id}">
+        <span class="n">${i + 1}</span>
+        <input type="text" class="col2" data-f="title" value="${esc(t.title)}" placeholder="اسم آهنگ" />
+        <input type="text" class="col2" data-f="artist" value="${esc(t.artist)}" placeholder="خواننده" />
+        <button class="btn btn-outline btn-sm" data-a="play">▶</button>
+        <button class="btn btn-outline btn-sm" data-a="toggle">${t.active ? "خاموش" : "روشن"}</button>
+        <button class="btn btn-dark btn-sm" data-a="del">حذف</button>
+      </div>`).join("");
+  }
+
+  $("list").addEventListener("change", async (e) => {
+    const row = e.target.closest(".tr"); if (!row || !e.target.dataset.f) return;
+    const { error } = await supabaseClient.from("radio_tracks")
+      .update({ [e.target.dataset.f]: e.target.value.trim() }).eq("id", row.dataset.id);
+    showToast(error ? "ذخیره نشد: " + error.message : "ذخیره شد");
+  });
+
+  $("list").addEventListener("click", async (e) => {
+    const btn = e.target.closest("button[data-a]"); if (!btn) return;
+    const row = btn.closest(".tr"); const t = tracks.find((x) => x.id === row.dataset.id); if (!t) return;
+    if (btn.dataset.a === "play") {
+      if (preview) preview.pause();
+      preview = new Audio(t.audio_url); preview.play().catch(() => showToast("پخش نشد"));
+    }
+    if (btn.dataset.a === "toggle") {
+      const { error } = await supabaseClient.from("radio_tracks").update({ active: !t.active }).eq("id", t.id);
+      if (error) return showToast(error.message);
+      t.active = !t.active; render();
+    }
+    if (btn.dataset.a === "del") {
+      if (!confirm("«" + t.title + "» حذف بشه؟")) return;
+      await supabaseClient.storage.from(BUCKET).remove([t.storage_path]);
+      const { error } = await supabaseClient.from("radio_tracks").delete().eq("id", t.id);
+      if (error) return showToast(error.message);
+      tracks = tracks.filter((x) => x.id !== t.id); render(); showToast("حذف شد");
+    }
+  });
+
+  // فشرده‌سازی به MP3 داخل مرورگر
+  async function compressToMp3(file, kbps, mono, onProgress) {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    const ctx = new AC();
+    let buf;
+    try { buf = await ctx.decodeAudioData(await file.arrayBuffer()); } finally { ctx.close && ctx.close(); }
+    const ch = mono ? 1 : Math.min(2, buf.numberOfChannels);
+    const rate = buf.sampleRate;
+    const L = buf.getChannelData(0);
+    const R = ch === 2 ? buf.getChannelData(1) : null;
+    const toI16 = (f, i0, i1) => { const o = new Int16Array(i1 - i0); for (let i = i0; i < i1; i++) { const v = Math.max(-1, Math.min(1, f[i])); o[i - i0] = v < 0 ? v * 0x8000 : v * 0x7fff; } return o; };
+    let M = L;
+    if (mono && buf.numberOfChannels > 1) { const R0 = buf.getChannelData(1); M = new Float32Array(L.length); for (let i = 0; i < L.length; i++) M[i] = (L[i] + R0[i]) / 2; }
+    const enc = new lamejs.Mp3Encoder(ch, rate, kbps);
+    const out = []; const step = 1152 * 20;
+    for (let i = 0; i < L.length; i += step) {
+      const end = Math.min(i + step, L.length);
+      const d = ch === 2 ? enc.encodeBuffer(toI16(L, i, end), toI16(R, i, end)) : enc.encodeBuffer(toI16(M, i, end));
+      if (d.length) out.push(new Uint8Array(d));
+      if ((i / step) % 8 === 0) { onProgress(i / L.length); await new Promise((r) => setTimeout(r, 0)); }
+    }
+    const tail = enc.flush(); if (tail.length) out.push(new Uint8Array(tail));
+    return new Blob(out, { type: "audio/mpeg" });
+  }
+
+  async function uploadFiles(files) {
+    for (const file of files) {
+      const row = document.createElement("div");
+      row.className = "up-row";
+      row.innerHTML = `<span style="flex:0 0 40%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(file.name)}</span><div class="bar"><i></i></div><span class="st">در صف…</span>`;
+      $("uploads").prepend(row);
+      const st = row.querySelector(".st"), bar = row.querySelector("i");
+
+      if (!file.type.startsWith("audio/") && !/\.(mp3|m4a|aac|ogg|wav|flac)$/i.test(file.name)) { st.textContent = "فرمت صوتی نیست"; continue; }
+      if (file.size > MAX) { st.textContent = "بیشتر از ۵۰ مگابایت"; continue; }
+
+      let body = file, ctype = file.type || "audio/mpeg";
+      let ext = (file.name.split(".").pop() || "mp3").toLowerCase().replace(/[^a-z0-9]/g, "") || "mp3";
+      const q = $("q").value;
+      if (q !== "0" && window.lamejs) {
+        const kbps = parseInt(q, 10), mono = q.endsWith("m");
+                // اگه فایل از قبل کم‌حجمه، فشرده‌سازی لازم نیست (۳ مگ ≈ ۱۲۸ کیلوبیت برای ۳.۵ دقیقه)
+        const smallLimit = kbps * 125 * 240; // حدود ۴ دقیقه با همون نرخ
+        if (file.size > smallLimit) {
+          try {
+            st.textContent = "در حال فشرده‌سازی…";
+            const blob = await compressToMp3(file, kbps, mono, (p) => { bar.style.width = Math.round(p * 40) + "%"; st.textContent = "فشرده‌سازی " + Math.round(p * 100) + "٪"; });
+            if (blob.size < file.size) { body = blob; ctype = "audio/mpeg"; ext = "mp3"; }
+          } catch (err) { console.warn(err); st.textContent = "فشرده نشد، فایل اصلی آپلود می‌شه…"; }
+        }
+      }
+      if (body.size > MAX) { st.textContent = "بعد از فشرده‌سازی هم بیشتر از ۵۰ مگابایته"; continue; }
+      const path = Date.now() + "_" + Math.random().toString(36).slice(2, 8) + "." + ext;
+      
+
+      st.textContent = "در حال آپلود (" + (body.size / 1048576).toFixed(1) + " مگابایت)…"; bar.style.width = "50%";
+      const up = await supabaseClient.storage.from(BUCKET).upload(path, body, { contentType: ctype, cacheControl: "31536000" });
+      if (up.error) { st.textContent = "خطا: " + up.error.message; continue; }
+      bar.style.width = "85%";
+
+      const url = supabaseClient.storage.from(BUCKET).getPublicUrl(path).data.publicUrl;
+      const title = file.name.replace(/\.[^.]+$/, "").replace(/[_]+/g, " ").trim();
+      const ins = await supabaseClient.from("radio_tracks").insert({ title, artist: "", audio_url: url, storage_path: path });
+      if (ins.error) { await supabaseClient.storage.from(BUCKET).remove([path]); st.textContent = "خطا: " + ins.error.message; continue; }
+      bar.style.width = "100%"; st.textContent = "✓ اضافه شد";
+    }
+    await loadTracks();
+  }
+
+  $("file").addEventListener("change", (e) => { uploadFiles([...e.target.files]); e.target.value = ""; });
+  const drop = $("drop");
+  ["dragenter", "dragover"].forEach((ev) => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.add("over"); }));
+  ["dragleave", "drop"].forEach((ev) => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.remove("over"); }));
+  drop.addEventListener("drop", (e) => uploadFiles([...e.dataTransfer.files]));
+
+
+  // ---------- رادیوهای آنلاین ----------
+  let stations = [], stPrev = null;
+  async function loadStations() {
+    const { data, error } = await supabaseClient.from("radio_stations").select("*").order("created_at", { ascending: true });
+    if (error) { $("stations").innerHTML = '<p class="x-hint">جدول رادیوها پیدا نشد. فایل radio-stations.sql رو در Supabase اجرا کنید.</p>'; return; }
+    stations = data || []; renderStations();
+  }
+  function renderStations() {
+    if (!stations.length) { $("stations").innerHTML = '<p class="x-hint">هنوز رادیویی اضافه نشده.</p>'; return; }
+    $("stations").innerHTML = stations.map((t) => `
+      <div class="tr ${t.active ? "" : "off"}" data-id="${t.id}" style="grid-template-columns:1fr 2fr auto auto auto;">
+        <span>${esc(t.name)}</span>
+        <span class="x-hint" style="direction:ltr;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(t.stream_url)}</span>
+        <button class="btn btn-outline btn-sm" data-s="test">تست</button>
+        <button class="btn btn-outline btn-sm" data-s="toggle">${t.active ? "خاموش" : "روشن"}</button>
+        <button class="btn btn-dark btn-sm" data-s="del">حذف</button>
+      </div>`).join("");
+  }
+  $("st-add").addEventListener("click", async () => {
+    const name = $("st-name").value.trim(), url = $("st-url").value.trim();
+    if (!name || !url) return showToast("اسم و لینک رو وارد کنید");
+    if (!/^https:\/\//i.test(url)) return showToast("لینک باید با https شروع بشه");
+    const { error } = await supabaseClient.from("radio_stations").insert({ name, stream_url: url });
+    if (error) return showToast("خطا: " + error.message);
+    $("st-name").value = ""; $("st-url").value = ""; showToast("اضافه شد"); loadStations();
+  });
+  $("stations").addEventListener("click", async (e) => {
+    const btn = e.target.closest("button[data-s]"); if (!btn) return;
+    const t = stations.find((x) => x.id === btn.closest(".tr").dataset.id); if (!t) return;
+    if (btn.dataset.s === "test") {
+      if (stPrev) stPrev.pause();
+      stPrev = new Audio(t.stream_url);
+      stPrev.addEventListener("error", () => showToast("این لینک پخش نشد"));
+      stPrev.play().then(() => showToast("در حال پخش…")).catch(() => showToast("این لینک پخش نشد"));
+    }
+    if (btn.dataset.s === "toggle") {
+      const { error } = await supabaseClient.from("radio_stations").update({ active: !t.active }).eq("id", t.id);
+      if (error) return showToast(error.message); t.active = !t.active; renderStations();
+    }
+    if (btn.dataset.s === "del") {
+      if (!confirm("«" + t.name + "» حذف بشه؟")) return;
+      const { error } = await supabaseClient.from("radio_stations").delete().eq("id", t.id);
+      if (error) return showToast(error.message); stations = stations.filter((x) => x.id !== t.id); renderStations();
+    }
+  });
+
+  loadTracks();
+  loadStations();
+</script>
+</body>
+</html>
